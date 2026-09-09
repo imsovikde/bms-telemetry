@@ -1,0 +1,37 @@
+name: BMS Telemetry CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  verify:
+    name: 100-Cycle Deep Verification Suite
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.10', '3.11', '3.12']
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Run 100-Cycle Deep Verification Suite
+      run: |
+        python verify_100.py
+
+    - name: Test Telemetry CLI Status Output
+      run: |
+        python bms_engine.py status
+
+    - name: Test Raw JSON Dump
+      run: |
+        python bms_engine.py full
