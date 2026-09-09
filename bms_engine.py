@@ -27,6 +27,8 @@ import hashlib
 import hmac
 import subprocess
 import platform
+import atexit
+import signal
 from datetime import datetime, timezone
 from decimal import Decimal, getcontext, ROUND_HALF_UP
 
@@ -884,21 +886,140 @@ def run_100_cycle_verification():
     print("=" * 80 + "\n")
 
 
-def run_daemon_loop():
-    print("[BMS Daemon] Initializing continuous 30-decimal high-precision cycle engine...")
+
+# ── Daemon Global State Reference (for flush handler) ──────────────────────
+_daemon_state_ref: dict = {}
+
+
+def _flush_shutdown_state() -> None:
+    """
+    Persist Q_shutdown — the last observed remaining capacity (mWh) — so that
+    the next boot can compute ΔQ_offline = max(0, Q_boot − Q_shutdown) and
+    inject that delta into the cycle counter even when the machine was charged
+    while fully powered off (S5 state).
+
+    Called by:
+      • atexit handler registered inside run_daemon_loop()
+      • BMSTelemetryService.SvcStop() via bms_service.py
+    """
+    global _daemon_state_ref
+    if not _daemon_state_ref:
+        return
+    try:
+        telem = get_telemetry()
+        q_now = fmt30(to_dec30(telem["remaining_capacity_mwh"]))
+        _daemon_state_ref["last_shutdown_capacity_mwh"] = q_now
+        _daemon_state_ref["last_shutdown_timestamp"] = datetime.now(timezone.utc).isoformat()
+        save_state(_daemon_state_ref)
+    except Exception:
+        pass  # Never raise from a shutdown handler
+
+
+def _detect_offline_delta(state: dict) -> dict:
+    """
+    Called once at daemon boot.  Computes how much energy accumulated while the
+    machine was powered off:
+
+        ΔE = max(0, Q_boot − Q_shutdown)
+
+    If ΔE > 50 mWh this represents an offline charge event that the OS missed
+    because the daemon was not running.  It is injected into accumulated_cycles
+    exactly as a live charge event would be.
+
+    Returns the (possibly mutated) state dict.
+    """
+    q_shutdown_str = state.get("last_shutdown_capacity_mwh")
+    if q_shutdown_str is None:
+        return state  # No prior shutdown recorded — first boot after install
+
+    try:
+        telem = get_telemetry()
+        q_boot = to_dec30(telem["remaining_capacity_mwh"])
+        q_shutdown = to_dec30(q_shutdown_str)
+        delta_e = q_boot - q_shutdown
+
+        if delta_e > Decimal("50.0"):
+            design_cap = to_dec30(state.get("design_capacity_mwh", DESIGN_CAPACITY_MWH))
+            if design_cap <= Decimal("0"):
+                design_cap = DESIGN_CAPACITY_MWH
+            delta_cycles = delta_e / design_cap
+
+            accum_cycles = to_dec30(state.get("accumulated_cycles", HISTORICAL_BASELINE_CYCLES))
+            accum_energy = to_dec30(state.get("accumulated_energy_mwh", HISTORICAL_BASELINE_MWH))
+            s5_cycles = to_dec30(state.get("s5_offline_cycles_accumulated", Decimal("0.0")))
+            s5_energy = to_dec30(state.get("s5_offline_energy_mwh", Decimal("0.0")))
+            s5_count = int(state.get("s5_offline_charges_count", 0))
+
+            accum_cycles += delta_cycles
+            accum_energy += delta_e
+            s5_cycles += delta_cycles
+            s5_energy += delta_e
+            s5_count += 1
+
+            events = state.get("history_events", [])
+            events.append({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "type": "S5_OFFLINE_CHARGE_BOOT_RECOVERY",
+                "delta_mwh": fmt30(delta_e),
+                "delta_cycles": fmt30(delta_cycles),
+                "capacity_at_shutdown": fmt30(q_shutdown),
+                "capacity_at_boot": fmt30(q_boot),
+            })
+
+            state["accumulated_cycles"] = fmt30(accum_cycles)
+            state["accumulated_energy_mwh"] = fmt30(accum_energy)
+            state["s5_offline_cycles_accumulated"] = fmt30(s5_cycles)
+            state["s5_offline_energy_mwh"] = fmt30(s5_energy)
+            state["s5_offline_charges_count"] = s5_count
+            state["history_events"] = events[-50:]
+            save_state(state)
+    except Exception:
+        pass  # Never let boot-recovery crash the daemon
+
+    return state
+
+
+def run_daemon_loop() -> None:
+    """
+    Persistent, headless 60-second Coulomb-counting loop.
+
+    Boot sequence:
+      1. Load canonical state from highest-monotonic replica.
+      2. Detect offline ΔQ (charged while powered off) and inject into counter.
+      3. Register graceful SIGTERM + atexit handler to flush Q_shutdown.
+      4. Enter polling loop — get_telemetry() → process_telemetry_and_update_state().
+
+    CPU budget: ≤ 0.01% average.  No console output after startup (compatible
+    with Windows Service SCM, systemd Type=simple, and macOS LaunchDaemon).
+    """
+    global _daemon_state_ref
+
     state = load_state()
+    state = _detect_offline_delta(state)
     telem = get_telemetry()
     state = process_telemetry_and_update_state(telem, state)
-    print(f"[BMS Daemon] Engine started. Accumulated Cycles: {state['accumulated_cycles']}")
-    print("[BMS Daemon] Running unkillable polling loop (60s tick interval, <0.01% CPU)...")
+    _daemon_state_ref = state
+
+    # Register graceful shutdown — works on Linux/macOS (SIGTERM) and Windows (atexit)
+    def _on_sigterm(signum, frame):
+        _flush_shutdown_state()
+        sys.exit(0)
+
+    atexit.register(_flush_shutdown_state)
+    try:
+        signal.signal(signal.SIGTERM, _on_sigterm)
+    except (OSError, ValueError):
+        pass  # SIGTERM unavailable on Windows — atexit covers SCM stop
 
     while True:
         try:
             time.sleep(60)
             telem = get_telemetry()
             state = process_telemetry_and_update_state(telem, state)
+            _daemon_state_ref = state
         except Exception:
             time.sleep(5)
+
 
 
 def run_biometric_fix():

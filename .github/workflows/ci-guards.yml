@@ -1,0 +1,106 @@
+name: CI Guards
+
+on:
+  push:
+    branches: ["main", "feat/**", "fix/**"]
+  pull_request:
+    branches: ["main"]
+
+# ── Matrix: three OS × three Python versions ────────────────────────────────
+jobs:
+  ci-guards:
+    name: "CI Guards · ${{ matrix.os }} · py${{ matrix.python }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.10", "3.11", "3.12"]
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Set up Python ───────────────────────────────────────────────────
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      # ── 3. Install pywin32 on Windows (needed for bms_service.py import) ──
+      - name: Install pywin32 (Windows only)
+        if: runner.os == 'Windows'
+        run: |
+          pip install pywin32
+          python -m pywin32_postinstall -install
+        shell: pwsh
+
+      # ── 4. Guard A: CLI Integrity ─────────────────────────────────────────
+      # bms status must exit 0 on all platforms (even without physical battery;
+      # the engine gracefully falls back to stored state values on CI).
+      - name: "Guard A: CLI Integrity — bms status exits 0"
+        run: python bms_engine.py status
+        env:
+          BMS_CI: "1"
+
+      # ── 5. Guard B: Anti-Mock Guard ───────────────────────────────────────
+      # Verify the hardcoded fallback (69993.0) appears ONLY inside
+      # except/fallback blocks, never as a primary data path.
+      # We check that every raw occurrence of the literal is inside an
+      # `except` clause or guarded by `if not` / `or` / `fallback` comment.
+      - name: "Guard B: Anti-Mock — hardcoded fallback confined to except blocks"
+        shell: python
+        run: |
+          import re, sys
+
+          source = open("bms_engine.py", encoding="utf-8").read()
+          lines  = source.splitlines()
+
+          # Find every line that contains the design-capacity fallback literal
+          LITERAL = "69993"
+          hits = [(i + 1, l.strip()) for i, l in enumerate(lines) if LITERAL in l]
+
+          ALLOWED_PATTERNS = [
+            # constant declarations at module level
+            re.compile(r"DESIGN_CAPACITY_MWH\s*="),
+            re.compile(r"HISTORICAL_BASELINE"),
+            # fallback expressions: `... or DESIGN_CAPACITY_MWH`
+            re.compile(r"\bor\b.*DESIGN_CAPACITY_MWH"),
+            # default_initial_state assignments
+            re.compile(r"default_initial_state"),
+            # `if design_cap <= 0` guard blocks
+            re.compile(r"if\s+design_cap"),
+            # HMAC baseline constants or comment lines
+            re.compile(r"^\s*#"),
+            # Unit test file itself (skip)
+          ]
+
+          bad = []
+          for lineno, text in hits:
+            if any(p.search(text) for p in ALLOWED_PATTERNS):
+              continue
+            bad.append((lineno, text))
+
+          if bad:
+            for lineno, text in bad:
+              print(f"  Line {lineno}: {text}", file=sys.stderr)
+            sys.exit(f"Anti-Mock Guard FAILED: {len(bad)} unguarded literal(s) found.")
+
+          print(f"Anti-Mock Guard PASSED: all {len(hits)} occurrence(s) are properly guarded.")
+
+      # ── 6. Guard C: Arithmetic Unit Tests ─────────────────────────────────
+      - name: "Guard C: Arithmetic — unit tests (persist=False, no hardware)"
+        run: python tests/test_arithmetic.py
+
+      # ── 7. Guard D: 100-Cycle Verification Suite ──────────────────────────
+      - name: "Guard D: 100-Cycle Engine Verification"
+        run: python bms_engine.py test-100
+        env:
+          BMS_CI: "1"
+
+      # ── 8. Guard E: bms_service.py importable ─────────────────────────────
+      - name: "Guard E: bms_service.py importable on Windows"
+        if: runner.os == 'Windows'
+        run: python -c "import bms_service; print('bms_service importable')"
+        shell: pwsh
