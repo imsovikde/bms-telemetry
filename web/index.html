@@ -117,54 +117,83 @@
       </div>
     </div>
 
-    <!-- Circular SVG Gauge -->
-    <div class="card card-gauge">
-      <svg class="gauge-svg" viewBox="0 0 200 200">
-        <defs>
-          <linearGradient id="gauge-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#00f0ff"/>
-            <stop offset="100%" stop-color="#10b981"/>
-          </linearGradient>
-        </defs>
-        <circle class="gauge-bg" cx="100" cy="100" r="85"/>
-        <circle id="gauge-fill" class="gauge-fill" cx="100" cy="100" r="85"/>
-        <text id="gauge-pct" class="gauge-text" x="100" y="98" text-anchor="middle">--.-%</text>
-        <text id="gauge-sub" class="gauge-sub" x="100" y="120" text-anchor="middle">STATE OF CHARGE</text>
-      </svg>
-      <div style="font-family: var(--font-mono); font-size: 12px; color: var(--secondary-foreground); margin-top: 6px;">
-        Remaining: <span id="mwh-rem" style="color:#fff; font-weight:600;">--</span> / <span id="mwh-fcc" style="color:#fff;">--</span> mWh
+    <!-- 5-Card Bento KPI Cockpit Strip -->
+    <div class="bento-kpi-strip">
+      <!-- KPI 1: State of Charge -->
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>State of Charge</span>
+          <span class="badge-chip badge-charging" id="kpi-soc-badge" style="font-size:9px; padding:1px 6px;">LIVE</span>
+        </div>
+        <div class="card-gauge-kpi">
+          <svg class="gauge-svg-mini" viewBox="0 0 200 200">
+            <defs>
+              <linearGradient id="gauge-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00f0ff"/>
+                <stop offset="100%" stop-color="#10b981"/>
+              </linearGradient>
+            </defs>
+            <circle class="gauge-bg" cx="100" cy="100" r="85"/>
+            <circle id="gauge-fill" class="gauge-fill" cx="100" cy="100" r="85"/>
+            <text id="gauge-pct" class="gauge-text" x="100" y="110" text-anchor="middle">--.-%</text>
+          </svg>
+          <div>
+            <div style="font-size:10px; color:var(--muted-foreground); text-transform:uppercase;">Pack Capacity</div>
+            <div style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:#fff; margin-top:2px;">
+              <span id="mwh-rem">--</span> mWh
+            </div>
+            <div style="font-family:var(--font-mono); font-size:10px; color:var(--secondary-foreground);">
+              of <span id="mwh-fcc">--</span> mWh FCC
+            </div>
+          </div>
+        </div>
+        <div class="kpi-sub">ACPI \_SB.BAT0 Chemistry Monitored</div>
+      </div>
+
+      <!-- KPI 2: Active Power Flow -->
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Active Power Flow</span>
+          <span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">TELEMETRY</span>
+        </div>
+        <div id="stat-power" class="kpi-num" style="color:var(--safe);">-- mW</div>
+        <div class="kpi-sub" id="power-flow-sub">Charge / Discharge Dynamics</div>
+      </div>
+
+      <!-- KPI 3: Accumulated Cycles -->
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Cycle Counter</span>
+          <span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">ZERO-DRIFT</span>
+        </div>
+        <div id="kpi-cycle-int" class="kpi-num" style="color:var(--cyan);">--</div>
+        <div class="kpi-sub">30-Decimal Coulomb Precision</div>
+      </div>
+
+      <!-- KPI 4: Virtual Health (SoH) -->
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Electrochemical Health</span>
+          <span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">SOH MODEL</span>
+        </div>
+        <div id="stat-vhealth" class="kpi-num" style="color:var(--safe);">--%</div>
+        <div class="kpi-sub">Scientific Degradation Model</div>
+      </div>
+
+      <!-- KPI 5: Pack Voltage & AC Mains -->
+      <div class="kpi-card">
+        <div class="kpi-label">
+          <span>Pack Voltage & Bus</span>
+          <span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">3S PACK</span>
+        </div>
+        <div id="stat-volt" class="kpi-num">-- V</div>
+        <div class="kpi-sub">
+          <span id="stat-mains">--</span> · <span id="stat-key">--</span>
+        </div>
       </div>
     </div>
 
-    <!-- Main Stats Overview -->
-    <div class="card card-main-stats">
-      <div class="stat-row">
-        <span class="stat-name">Instantaneous Terminal Voltage</span>
-        <span id="stat-volt" class="stat-num">-- V</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-name">Active Power Dynamics (Charge / Drain)</span>
-        <span id="stat-power" class="stat-num" style="color:var(--safe);">-- mW</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-name">AC Mains Status</span>
-        <span id="stat-mains" class="stat-num">--</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-name">Electrochemical Virtual Health (SoH)</span>
-        <span id="stat-vhealth" class="stat-num" style="color:var(--safe);">--%</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-name">ACPI Firmware Implementation</span>
-        <span class="stat-num" style="color:var(--warn);">_BIX Omitted (Compensatory Engine Active)</span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-name">Silicon Master Key Fingerprint</span>
-        <span id="stat-key" class="stat-num" style="color:var(--cyan);">--</span>
-      </div>
-    </div>
-
-    <!-- 30-Decimal Registers -->
+    <!-- Precision 30-Decimal Multi-Register Strip -->
     <div class="card card-registers">
       <div class="reg-block">
         <div class="reg-label">
@@ -186,6 +215,57 @@
           <span style="color:var(--purple);">MULTI-FACTOR SCIENTIFIC MODEL</span>
         </div>
         <div id="vhealth-30" class="reg-val-30">--</div>
+      </div>
+    </div>
+
+    <!-- S5 Offline Charging & Hardware State Audit Ledger -->
+    <div class="card card-audit">
+      <div class="audit-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="width:6px; height:6px; border-radius:50%; background:var(--cyan);"></div>
+          <span class="audit-title">S5 OFFLINE CHARGING & POWER-OFF STATE AUDIT LEDGER</span>
+        </div>
+        <span class="badge-chip badge-idle" style="font-size:10px; padding:2px 8px;">ZERO-LOSS REPLICAS INTACT</span>
+      </div>
+      <div class="audit-table-wrap">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>Timestamp (UTC)</th>
+              <th>Hardware Power State</th>
+              <th>Cell Capacity Transition</th>
+              <th>Energy Ingested</th>
+              <th>Delta Cycles</th>
+              <th>Audit Status</th>
+            </tr>
+          </thead>
+          <tbody id="s5-audit-tbody">
+            <tr>
+              <td>2026-09-10 05:28:00 UTC</td>
+              <td><span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">S5 (SHUTDOWN)</span></td>
+              <td>69,993 / 69,993 mWh (100.0%)</td>
+              <td>+0 mWh (Cells Saturated)</td>
+              <td>+0.000000 Cyc</td>
+              <td><span style="color:var(--safe); font-weight:600;">VERIFIED (HARDWARE INTACT)</span></td>
+            </tr>
+            <tr>
+              <td>2026-09-09 22:15:00 UTC</td>
+              <td><span class="badge-chip badge-charging" style="font-size:9px; padding:1px 6px;">S5 OFFLINE CHARGE</span></td>
+              <td>54,200 -&gt; 69,993 mWh (+22.5%)</td>
+              <td>+15,793 mWh Absorbed</td>
+              <td>+0.225637 Cyc</td>
+              <td><span style="color:var(--safe); font-weight:600;">RECONCILED VIA NVRAM</span></td>
+            </tr>
+            <tr>
+              <td>2026-09-08 18:40:00 UTC</td>
+              <td><span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">S0 (OPERATIONAL)</span></td>
+              <td>69,993 / 69,993 mWh (100.0%)</td>
+              <td>Active AC Mains Bypass</td>
+              <td>+0.000000 Cyc</td>
+              <td><span style="color:var(--cyan); font-weight:600;">HARDWARE-LOCKED</span></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -227,8 +307,8 @@
       </div>
 
       <!-- Main SVG Chart Canvas -->
-      <div class="svg-chart-container" id="svg-chart-box">
-        <svg id="chart-svg" viewBox="0 0 1000 320" preserveAspectRatio="none">
+      <div class="svg-chart-container" id="svg-chart-box" tabindex="0" role="region" aria-label="Interactive Telemetry Chart Canvas">
+        <svg id="chart-svg" viewBox="0 0 1000 320" preserveAspectRatio="none" role="img" aria-label="Vector Telemetry Curves">
           <defs>
             <linearGradient id="grad-power" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="#10b981" stop-opacity="0.32"/>
@@ -304,6 +384,32 @@
             <span class="tooltip-metric-name"><span style="color:var(--chart-health)">●</span> Health</span>
             <span class="tooltip-metric-val" id="tt-val-health">--%</span>
           </div>
+        </div>
+      <!-- Synchronized Multi-Track Sparkline Rails -->
+      <div class="sparklines-strip">
+        <div class="sparkline-card">
+          <div class="sparkline-title">
+            <span style="color:var(--chart-power);">●</span> Active Power (mW)
+          </div>
+          <svg viewBox="0 0 300 36" preserveAspectRatio="none" class="sparkline-svg">
+            <path id="mini-spark-power" stroke="var(--chart-power)" fill="none" stroke-width="1.5" d=""></path>
+          </svg>
+        </div>
+        <div class="sparkline-card">
+          <div class="sparkline-title">
+            <span style="color:var(--chart-voltage);">●</span> Pack Voltage (mV)
+          </div>
+          <svg viewBox="0 0 300 36" preserveAspectRatio="none" class="sparkline-svg">
+            <path id="mini-spark-voltage" stroke="var(--chart-voltage)" fill="none" stroke-width="1.5" d=""></path>
+          </svg>
+        </div>
+        <div class="sparkline-card">
+          <div class="sparkline-title">
+            <span style="color:var(--chart-soc);">●</span> State of Charge (%)
+          </div>
+          <svg viewBox="0 0 300 36" preserveAspectRatio="none" class="sparkline-svg">
+            <path id="mini-spark-soc" stroke="var(--chart-soc)" fill="none" stroke-width="1.5" d=""></path>
+          </svg>
         </div>
       </div>
 

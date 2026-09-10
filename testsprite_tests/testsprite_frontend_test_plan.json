@@ -1,0 +1,531 @@
+[
+  {
+    "id": "TC001",
+    "title": "View live hardware cockpit status",
+    "description": "Verify that opening the cockpit shows the live battery and hardware state with the core KPI strip populated.",
+    "category": "Hardware Cockpit & Bento KPI Strip",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the live state of charge gauge and core capacity metrics are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify active power flow, cycle counters, and ACPI status are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Export and restore telemetry archive",
+    "description": "Verify that the telemetry archive can be exported and then imported back to restore the historical archive state.",
+    "category": "Hardware Cockpit & Bento KPI Strip",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Export the telemetry archive"
+      },
+      {
+        "type": "action",
+        "description": "Import the exported telemetry archive"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the historical archive state is restored"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cockpit and historical analysis remain available after restore"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Read live charging and drain flow states",
+    "description": "Verify that the cockpit reflects the current wattage flow state for charge, standby, or drain.",
+    "category": "Hardware Cockpit & Bento KPI Strip",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the active wattage flow state is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the live cockpit context remains visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Inspect chart values with crosshair and reset zoom",
+    "description": "Verify that scrubbing the historical chart shows instantaneous values and that zoom can be returned to the full view.",
+    "category": "Monotonic SVG Vector Telemetry Chart",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open the historical telemetry chart view"
+      },
+      {
+        "type": "action",
+        "description": "Scrub across the chart to inspect values"
+      },
+      {
+        "type": "action",
+        "description": "Reset the chart zoom"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify floating tooltip values are displayed during inspection"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the chart returns to the full historical view after zoom reset"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Import a valid telemetry archive and restore history",
+    "description": "This verifies that a user can import a saved telemetry archive and see the historical archive state restored in the cockpit.",
+    "category": "Telemetry Archive Export and Import",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to import a telemetry archive"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid telemetry archive file"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the historical archive state is restored"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify historical telemetry content is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Change telemetry channel and preset range",
+    "description": "Verify that a user can switch the historical telemetry channel and preset time range and see the analysis view update accordingly.",
+    "category": "Channel and Date-Range Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open the telemetry channel selector"
+      },
+      {
+        "type": "action",
+        "description": "Select a different telemetry channel"
+      },
+      {
+        "type": "action",
+        "description": "Open the date range selector"
+      },
+      {
+        "type": "action",
+        "description": "Select a preset time range"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the chart updates to the selected telemetry channel and time window"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the KPI context remains synchronized with the selected window"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Export the complete telemetry archive",
+    "description": "This verifies that a user can export the full telemetry archive from the cockpit and receive a downloadable JSON archive.",
+    "category": "Telemetry Archive Export and Import",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to export the telemetry archive"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a telemetry archive download is initiated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the archive export remains available on the cockpit"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Toggle historical series visibility",
+    "description": "Verify that the historical chart can show and hide telemetry series pills without losing chart coherence.",
+    "category": "Monotonic SVG Vector Telemetry Chart",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open the historical telemetry chart view"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the power series"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the voltage series"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the state of charge series"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the temperature series"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the health series"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the chart remains visible with the selected series displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the series selection state is reflected in the chart"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Inspect Coulomb cycle precision in the cockpit",
+    "description": "Verify that the cockpit exposes high-precision Coulomb integration and cycle counters for engineering review.",
+    "category": "Hardware Cockpit & Bento KPI Strip",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify Coulomb accumulated cycle counters are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify high-precision integration values are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Cycle through all preset history ranges",
+    "description": "Verify that the preset range selector supports the common engineering review windows from short-term to lifetime history.",
+    "category": "Channel and Date-Range Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open the date range selector"
+      },
+      {
+        "type": "action",
+        "description": "Select a 5 minute preset range"
+      },
+      {
+        "type": "action",
+        "description": "Open the date range selector"
+      },
+      {
+        "type": "action",
+        "description": "Select a 1 hour preset range"
+      },
+      {
+        "type": "action",
+        "description": "Open the date range selector"
+      },
+      {
+        "type": "action",
+        "description": "Select a 24 hour preset range"
+      },
+      {
+        "type": "action",
+        "description": "Open the date range selector"
+      },
+      {
+        "type": "action",
+        "description": "Select a 7 day preset range"
+      },
+      {
+        "type": "action",
+        "description": "Open the date range selector"
+      },
+      {
+        "type": "action",
+        "description": "Select a 30 day preset range"
+      },
+      {
+        "type": "action",
+        "description": "Open the date range selector"
+      },
+      {
+        "type": "action",
+        "description": "Select a year-to-date preset range"
+      },
+      {
+        "type": "action",
+        "description": "Open the date range selector"
+      },
+      {
+        "type": "action",
+        "description": "Select a lifetime preset range"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected preset range updates the analysis window"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Export before importing to preserve archive availability",
+    "description": "This verifies that export remains usable even after a user performs an import workflow on the same page.",
+    "category": "Telemetry Archive Export and Import",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to export the telemetry archive"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to import a telemetry archive"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid telemetry archive file"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to export the telemetry archive again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a telemetry archive download is initiated"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cockpit remains synchronized after the import"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Enable smoothing for monotonic historical curves",
+    "description": "Verify that turning on smoothing preserves a readable historical trend in the SVG chart for engineering review.",
+    "category": "Monotonic SVG Vector Telemetry Chart",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open the historical telemetry chart view"
+      },
+      {
+        "type": "action",
+        "description": "Toggle curve smoothing"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the smoothed historical chart is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the trend remains monotonic without visual retrograde behavior"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC013",
+    "title": "Importing a valid archive updates the cockpit history context",
+    "description": "This verifies that importing a telemetry archive updates the historical context used by the cockpit for analysis.",
+    "category": "Telemetry Archive Export and Import",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to import a telemetry archive"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid telemetry archive file"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the chart history context is restored"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the cockpit reflects the imported telemetry archive"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC014",
+    "title": "Review ACPI offline charging audit state",
+    "description": "Verify that the cockpit surfaces the ACPI offline charging audit state needed for hardware validation.",
+    "category": "Hardware Cockpit & Bento KPI Strip",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the ACPI hardware status is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the offline charging audit ledger state is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC015",
+    "title": "Select a custom calendar range for analysis",
+    "description": "Verify that selecting a custom calendar date range updates the chart and analysis context to the chosen telemetry window.",
+    "category": "Channel and Date-Range Selection",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Open the date range selector"
+      },
+      {
+        "type": "action",
+        "description": "Select a custom calendar date range"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the chart updates to the selected custom time window"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected time window is reflected in the analysis context"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC016",
+    "title": "Restore a saved archive after clearing the current archive view",
+    "description": "This verifies that importing a valid archive brings historical telemetry back into view when the current archive view is empty or changed.",
+    "category": "Telemetry Archive Export and Import",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the control to import a telemetry archive"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid telemetry archive file"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the historical archive state is restored"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the restored archive contains historical telemetry data"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC017",
+    "title": "Export and import remain available from the main cockpit page",
+    "description": "This verifies that the main cockpit page exposes both archive actions without requiring navigation away from the live telemetry view.",
+    "category": "Telemetry Archive Export and Import",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify export archive controls are available"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify import archive controls are available"
+      }
+    ],
+    "priority": "Medium"
+  }
+]

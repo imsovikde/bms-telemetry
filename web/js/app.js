@@ -177,18 +177,63 @@ class BmsApplication {
     if (mwhRem) mwhRem.textContent = Math.round(telem.remaining_capacity_mwh).toLocaleString();
     if (mwhFcc) mwhFcc.textContent = Math.round(telem.full_charge_capacity_mwh).toLocaleString();
 
-    // Instantaneous Stats
+    // Instantaneous Stats & KPIs
     const statVolt = document.getElementById('stat-volt');
     const statPower = document.getElementById('stat-power');
     const statMains = document.getElementById('stat-mains');
     const statVHealth = document.getElementById('stat-vhealth');
     const statKey = document.getElementById('stat-key');
+    const kpiCycleInt = document.getElementById('kpi-cycle-int');
+    const powerFlowSub = document.getElementById('power-flow-sub');
+    const kpiSocBadge = document.getElementById('kpi-soc-badge');
 
     if (statVolt) statVolt.textContent = (telem.voltage_mv / 1000.0).toFixed(3) + ' V';
-    if (statPower) statPower.textContent = (telem.charging ? '+' + chgRate : (telem.discharging ? '-' + disRate : '0')) + ' mW';
-    if (statMains) statMains.textContent = telem.power_online ? 'Connected (Online)' : 'Disconnected (Battery)';
+    if (statPower) {
+      if (telem.charging && chgRate > 0) {
+        statPower.textContent = '+' + (chgRate / 1000.0).toFixed(2) + ' W';
+        statPower.style.color = 'var(--safe)';
+      } else if (telem.discharging && disRate > 0) {
+        statPower.textContent = '-' + (disRate / 1000.0).toFixed(2) + ' W';
+        statPower.style.color = 'var(--warn)';
+      } else {
+        statPower.textContent = '0.00 W';
+        statPower.style.color = 'var(--cyan)';
+      }
+    }
+
+    if (powerFlowSub) {
+      if (telem.power_online && isFull) {
+        powerFlowSub.textContent = 'AC Mains Bypass · Cells Saturated';
+      } else if (telem.charging && chgRate > 0) {
+        powerFlowSub.textContent = `Ingesting +${chgRate} mW to Cells`;
+      } else if (telem.discharging) {
+        powerFlowSub.textContent = `Draining -${disRate} mW on Battery`;
+      } else {
+        powerFlowSub.textContent = 'AC Mains Standby (Zero Drain)';
+      }
+    }
+
+    if (kpiSocBadge) {
+      if (telem.charging && chgRate > 0) {
+        kpiSocBadge.className = 'badge-chip badge-charging';
+        kpiSocBadge.textContent = 'CHARGING';
+      } else if (telem.discharging) {
+        kpiSocBadge.className = 'badge-chip badge-discharging';
+        kpiSocBadge.textContent = 'DRAINING';
+      } else {
+        kpiSocBadge.className = 'badge-chip badge-idle';
+        kpiSocBadge.textContent = isFull ? 'SATURATED' : 'STANDBY';
+      }
+    }
+
+    if (statMains) statMains.textContent = telem.power_online ? 'AC Online' : 'On Battery';
     if (statVHealth) statVHealth.textContent = parseFloat(state.virtual_health_percentage || 100).toFixed(2) + '%';
-    if (statKey) statKey.textContent = hwId ? hwId.master_key_fingerprint : '--';
+    if (statKey) statKey.textContent = hwId ? hwId.master_key_fingerprint.slice(0, 10) + '...' : '--';
+
+    if (kpiCycleInt) {
+      const cycParts = String(state.accumulated_cycles || '12.000000').split('.');
+      kpiCycleInt.innerHTML = `${cycParts[0]}<span style="font-size:13px; color:var(--muted-foreground);">.${(cycParts[1] || '0000').slice(0, 4)}</span>`;
+    }
 
     // 30-Decimal Registers (Zero Float Casting)
     const cycles30 = document.getElementById('cycles-30');

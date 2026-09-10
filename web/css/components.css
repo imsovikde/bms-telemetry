@@ -382,12 +382,13 @@
 }
 
 /* SVG Circular Gauge */
-.gauge-svg { width: 200px; height: 200px; }
-.gauge-bg { fill: none; stroke: rgba(255, 255, 255, 0.05); stroke-width: 12; }
+.gauge-svg { width: 180px; height: 180px; }
+.gauge-svg-mini { width: 68px; height: 68px; flex-shrink: 0; }
+.gauge-bg { fill: none; stroke: rgba(255, 255, 255, 0.05); stroke-width: 10; }
 .gauge-fill {
   fill: none;
   stroke: url(#gauge-grad);
-  stroke-width: 12;
+  stroke-width: 10;
   stroke-linecap: round;
   stroke-dasharray: 534.07;
   stroke-dashoffset: 0;
@@ -400,6 +401,7 @@
   font-weight: 800;
   fill: #fff;
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 .gauge-sub {
   font-size: 10px;
@@ -427,6 +429,7 @@
   font-family: var(--font-mono);
   font-weight: 600;
   color: #fff;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 30-Decimal Registers */
@@ -435,13 +438,13 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 12px 16px;
-  margin-bottom: 10px;
+  transition: border-color 0.15s ease;
 }
-.reg-block:last-child {
-  margin-bottom: 0;
+.reg-block:hover {
+  border-color: var(--border-strong);
 }
 .reg-label {
-  font-size: 11px;
+  font-size: 10.5px;
   text-transform: uppercase;
   color: var(--muted-foreground);
   font-family: var(--font-mono);
@@ -452,10 +455,11 @@
 }
 .reg-val-30 {
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   color: var(--cyan);
   word-break: break-all;
   line-height: 1.4;
+  font-variant-numeric: tabular-nums;
 }
 .reg-val-30 span.high { color: #fff; font-weight: bold; }
 .reg-val-30 span.micro { color: var(--safe); font-weight: 600; text-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }

@@ -24,3 +24,5 @@ desktop.ini
 *.o
 *.obj
 bms_core
+testsprite_tests/tmp/
+testsprite_tests/tmp/config.json
