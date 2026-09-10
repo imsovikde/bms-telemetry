@@ -1,0 +1,20 @@
+[Unit]
+Description=BMS Battery Telemetry & Real-Time HTTP Dashboard
+Documentation=https://github.com/imsovikde/bms-telemetry
+After=network.target multi-user.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/bms/bms_ui.py --port 8989 --no-browser
+WorkingDirectory=/usr/local/lib/bms
+Restart=always
+RestartSec=5
+Nice=10
+CPUQuota=5%
+MemoryMax=128M
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
