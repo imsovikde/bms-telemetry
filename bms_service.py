@@ -24,7 +24,7 @@ import os
 import time
 import logging
 import threading
-from http.server import HTTPServer
+from http.server import ThreadingHTTPServer
 
 # ── Locate engine regardless of CWD ────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -130,7 +130,7 @@ class BMSTelemetryService(win32serviceutil.ServiceFramework):
         # ── Launch embedded 4 Hz real-time Web Dashboard on http://127.0.0.1:8989 ──
         if bms_ui:
             try:
-                self._httpd = HTTPServer(("127.0.0.1", 8989), bms_ui.BMSHandler)
+                self._httpd = ThreadingHTTPServer(("127.0.0.1", 8989), bms_ui.BMSHandler)
                 web_thread = threading.Thread(
                     target=self._httpd.serve_forever,
                     daemon=True,

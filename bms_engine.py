@@ -30,6 +30,7 @@ import platform
 import atexit
 import signal
 from datetime import datetime, timezone
+import decimal
 from decimal import Decimal, getcontext, ROUND_HALF_UP
 
 # Reconfigure stdout/stderr to UTF-8 to prevent Windows cp1252 charmap crashes
@@ -40,8 +41,9 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-# Set high-precision decimal context (60 digits internal precision)
-getcontext().prec = 60
+# Set high-precision decimal context (80 digits internal precision across all threads)
+decimal.DefaultContext.prec = 80
+getcontext().prec = 80
 DEC_30 = Decimal("0." + "0" * 30)
 
 # Immutable Hardware Identifiers for Infinix ZERO BOOK 13 (EM_IDL822_V2.0)
@@ -191,6 +193,9 @@ def get_macos_battery_telemetry() -> dict:
 
 def to_dec30(val) -> Decimal:
     """Ensure value is converted to a high-precision Decimal quantized to 30 digits."""
+    ctx = getcontext()
+    if ctx.prec < 80:
+        ctx.prec = 80
     if isinstance(val, Decimal):
         d = val
     else:
@@ -1308,7 +1313,25 @@ def run_live_tui(refresh_interval: float = 0.25):
 
 
 def run_web_ui(port: int = 8989):
-    """Launches the Generative Web UI dashboard."""
+    """Launches the Generative Web UI dashboard and forcefully opens browser."""
+    import urllib.request
+    import webbrowser
+    url = f"http://127.0.0.1:{port}"
+
+    already_running = False
+    try:
+        with urllib.request.urlopen(f"{url}/api/status", timeout=0.8) as resp:
+            if resp.status == 200:
+                already_running = True
+    except Exception:
+        already_running = False
+
+    if already_running:
+        print(f"[+] BMS Web Dashboard is active on {url}")
+        print("[*] Forcefully launching default browser...")
+        webbrowser.open(url)
+        return
+
     try:
         import bms_ui
         bms_ui.start_server(port=port, open_browser=True)

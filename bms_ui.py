@@ -19,8 +19,12 @@ import json
 import time
 import webbrowser
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from decimal import Decimal
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+import decimal
+from decimal import Decimal, getcontext
+
+decimal.DefaultContext.prec = 80
+getcontext().prec = 80
 
 # Ensure local engine is importable
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -582,7 +586,7 @@ class BMSHandler(BaseHTTPRequestHandler):
 
 
 def start_server(port: int = 8989, open_browser: bool = True):
-    server = HTTPServer(("127.0.0.1", port), BMSHandler)
+    server = ThreadingHTTPServer(("127.0.0.1", port), BMSHandler)
     url = f"http://127.0.0.1:{port}"
     print("\n" + "=" * 76)
     print("      BMS REAL-TIME GENERATIVE UI & TELEMETRY DASHBOARD ONLINE       ")
