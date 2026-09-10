@@ -23,6 +23,8 @@ import sys
 import os
 import time
 import logging
+import threading
+from http.server import HTTPServer
 
 # ── Locate engine regardless of CWD ────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -35,6 +37,11 @@ else:
     sys.path.insert(0, _HERE)
 
 import bms_engine  # noqa: E402  — engine must be importable before pywin32
+
+try:
+    import bms_ui  # noqa: E402
+except ImportError:
+    bms_ui = None
 
 try:
     import win32serviceutil
@@ -76,6 +83,7 @@ class BMSTelemetryService(win32serviceutil.ServiceFramework):
         win32serviceutil.ServiceFramework.__init__(self, args)
         self._stop_event = win32event.CreateEvent(None, 0, 0, None)
         self._running = True
+        self._httpd = None
 
     def SvcStop(self):
         """Called by SCM when the service is stopping."""
@@ -83,6 +91,13 @@ class BMSTelemetryService(win32serviceutil.ServiceFramework):
         self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
         self._running = False
         win32event.SetEvent(self._stop_event)
+        if self._httpd:
+            try:
+                self._httpd.shutdown()
+                self._httpd.server_close()
+                log.info("BMSTelemetry: Web server shut down successfully.")
+            except Exception as exc:
+                log.warning("Web server shutdown warning: %s", exc)
         # Give bms_engine a chance to write Q_shutdown before we die
         try:
             bms_engine._flush_shutdown_state()
@@ -110,8 +125,22 @@ class BMSTelemetryService(win32serviceutil.ServiceFramework):
             log.info("BMSTelemetry service stopped.")
 
     def _run(self):
-        """Mirrors run_daemon_loop but checks stop event each tick."""
+        """Mirrors run_daemon_loop and hosts embedded real-time UI web server."""
         log.info("Engine initialising…")
+        # ── Launch embedded 4 Hz real-time Web Dashboard on http://127.0.0.1:8989 ──
+        if bms_ui:
+            try:
+                self._httpd = HTTPServer(("127.0.0.1", 8989), bms_ui.BMSHandler)
+                web_thread = threading.Thread(
+                    target=self._httpd.serve_forever,
+                    daemon=True,
+                    name="BMSWebThread"
+                )
+                web_thread.start()
+                log.info("BMSTelemetry: Real-Time Web Dashboard listening on http://127.0.0.1:8989")
+            except Exception as exc:
+                log.warning("Failed to bind embedded web server to port 8989: %s", exc)
+
         state = bms_engine.load_state()
         telem = bms_engine.get_telemetry()
         state = bms_engine.process_telemetry_and_update_state(telem, state)
