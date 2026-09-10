@@ -217,6 +217,70 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
   .bar-fill-rose { background: var(--rose); }
 
   canvas { width: 100%; height: 180px; display: block; }
+  .btn-action {
+    background: rgba(13, 20, 32, 0.9);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+  }
+  .btn-export {
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+  }
+  .btn-export:hover {
+    background: rgba(0, 240, 255, 0.15);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+    transform: translateY(-1px);
+  }
+  .btn-import {
+    border: 1px solid var(--emerald);
+    color: var(--emerald);
+  }
+  .btn-import:hover {
+    background: rgba(0, 255, 136, 0.15);
+    box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+    transform: translateY(-1px);
+  }
+  .toast-notification {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 9999;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+  }
+  .toast-show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  .toast-success {
+    background: rgba(13, 20, 32, 0.95);
+    border: 1px solid var(--emerald);
+    color: var(--emerald);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.25);
+  }
+  .toast-error {
+    background: rgba(13, 20, 32, 0.95);
+    border: 1px solid var(--rose);
+    color: var(--rose);
+    box-shadow: 0 0 20px rgba(255, 51, 102, 0.25);
+  }
   footer { margin-top: 24px; text-align: center; font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); }
 </style>
 </head>
@@ -227,7 +291,18 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       <h1><div class="pulse-dot"></div> INFINIX ZERO BOOK 13 BMS TELEMETRY</h1>
       <p>EM_IDL822_V2.0 / Raptor Lake-P · Intel 600 Series PCH · ACPI \_SB.PC00.LPCB.H_EC.BAT0</p>
     </div>
-    <div id="status-badge" class="badge-chip badge-idle">INITIALIZING</div>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <button id="btn-export" onclick="exportLifetimeArchive()" class="btn-action btn-export" title="Export complete untruncated lifetime history JSON">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        EXPORT LIFETIME JSON
+      </button>
+      <button id="btn-import" onclick="triggerImportDialog()" class="btn-action btn-import" title="Import and restore lifetime telemetry archive">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        IMPORT JSON
+      </button>
+      <input type="file" id="import-file-input" accept=".json" style="display:none;" onchange="handleFileImport(event)" />
+      <div id="status-badge" class="badge-chip badge-idle">INITIALIZING</div>
+    </div>
   </header>
 
   <div class="grid">
@@ -476,6 +551,73 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       console.error(err);
     }
   };
+
+  function showToast(msg, isError = false) {
+    let toast = document.getElementById('toast-box');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'toast-box';
+      toast.className = 'toast-notification';
+      document.body.appendChild(toast);
+    }
+    toast.innerText = msg;
+    toast.className = 'toast-notification toast-show ' + (isError ? 'toast-error' : 'toast-success');
+    setTimeout(() => {
+      toast.className = 'toast-notification';
+    }, 4500);
+  }
+
+  function exportLifetimeArchive() {
+    showToast("Preparing full untruncated lifetime telemetry archive...");
+    const a = document.createElement('a');
+    a.href = '/api/export';
+    a.download = `bms_lifetime_telemetry_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => {
+      showToast("Lifetime telemetry archive exported successfully!");
+    }, 800);
+  }
+
+  function triggerImportDialog() {
+    const input = document.getElementById('import-file-input');
+    if (input) input.click();
+  }
+
+  function handleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    showToast("Reading archive file...");
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        fetch('/api/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            showToast(`RESTORED: ${data.accumulated_cycles} CYCLES (${data.total_historical_events} EVENTS INTACT)`);
+            fetch('/api/status').then(r => r.json()).then(updateUI);
+          } else {
+            showToast("Import error: " + (data.error || "Unknown validation error"), true);
+          }
+        })
+        .catch(err => {
+          showToast("Network error importing telemetry: " + err.message, true);
+        });
+      } catch (err) {
+        showToast("Invalid JSON telemetry file.", true);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
 </script>
 </body>
 </html>
@@ -581,6 +723,44 @@ class BMSHandler(BaseHTTPRequestHandler):
                     time.sleep(0.25)
             except (BrokenPipeError, ConnectionResetError):
                 pass
+        elif self.path == "/api/export":
+            try:
+                export_data = engine.export_lifetime_data()
+                raw = json.dumps(export_data, indent=2).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Disposition", 'attachment; filename="bms_lifetime_telemetry_export.json"')
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(raw)
+            except Exception as exc:
+                self.send_error(500, f"Export failure: {exc}")
+        else:
+            self.send_error(404)
+
+    def do_POST(self):
+        if self.path == "/api/import":
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+                if content_length <= 0:
+                    self.send_error(400, "Empty payload")
+                    return
+                body = self.rfile.read(content_length).decode("utf-8")
+                parsed_json = json.loads(body)
+                result = engine.import_lifetime_data(parsed_json)
+                raw_resp = json.dumps(result).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(raw_resp)
+            except Exception as exc:
+                err_body = json.dumps({"success": False, "error": str(exc)}).encode("utf-8")
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(err_body)
         else:
             self.send_error(404)
 

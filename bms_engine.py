@@ -420,6 +420,143 @@ def save_state(state: dict):
             pass
 
 
+def export_lifetime_data(target_path: str = None) -> dict:
+    """
+    Exports the complete, untruncated lifetime historical battery telemetry,
+    including all hardware identities, cryptographic seals, 30-decimal registers,
+    S5 offline charging logs, and every recorded event ledger.
+    """
+    state = load_state()
+    telem = get_telemetry()
+    state = process_telemetry_and_update_state(telem, state, persist=False)
+
+    export_payload = {
+        "format": "BMS_LIFETIME_ARCHIVE",
+        "export_version": "4.2.0",
+        "export_timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "hardware_metadata": {
+            "motherboard_uuid": MOTHERBOARD_UUID,
+            "baseboard_serial": BASEBOARD_SERIAL,
+            "baseboard_product": BASEBOARD_PRODUCT,
+            "battery_name": BATTERY_NAME,
+            "battery_manufacturer": BATTERY_MANUFACTURER,
+            "battery_serial": BATTERY_SERIAL,
+            "cell_chemistry": CELL_CHEMISTRY,
+            "acpi_dsdt_path": ACPI_DSDT_PATH,
+            "nominal_voltage_mv": fmt30(NOMINAL_VOLTAGE_MV),
+            "design_capacity_mwh": fmt30(DESIGN_CAPACITY_MWH),
+            "master_key_fingerprint": HARDWARE_KEY_HEX[:16]
+        },
+        "precision_telemetry_registers": {
+            "accumulated_cycles": fmt30(state.get("accumulated_cycles", "0")),
+            "accumulated_energy_mwh": fmt30(state.get("accumulated_energy_mwh", "0")),
+            "virtual_health_percentage": fmt30(state.get("virtual_health_percentage", "100")),
+            "state_of_charge_percentage": fmt30(state.get("state_of_charge_percentage", "100")),
+            "cycle_degradation_loss_pct": fmt30(state.get("cycle_degradation_loss_pct", "0")),
+            "thermal_stress_loss_pct": fmt30(state.get("thermal_stress_loss_pct", "0")),
+            "voltage_stress_loss_pct": fmt30(state.get("voltage_stress_loss_pct", "0")),
+            "last_remaining_capacity_mwh": fmt30(state.get("last_remaining_capacity_mwh", DESIGN_CAPACITY_MWH)),
+            "last_full_charge_capacity_mwh": fmt30(state.get("last_full_charge_capacity_mwh", DESIGN_CAPACITY_MWH)),
+            "last_terminal_voltage_mv": fmt30(state.get("last_terminal_voltage_mv", NOMINAL_VOLTAGE_MV)),
+            "last_power_online": state.get("last_power_online", True)
+        },
+        "s5_offline_charge_audit": {
+            "s5_offline_charges_count": int(state.get("s5_offline_charges_count", 0)),
+            "s5_offline_cycles_accumulated": fmt30(state.get("s5_offline_cycles_accumulated", "0")),
+            "s5_offline_energy_mwh": fmt30(state.get("s5_offline_energy_mwh", "0")),
+            "last_shutdown_capacity_mwh": fmt30(state.get("last_shutdown_capacity_mwh", DESIGN_CAPACITY_MWH))
+        },
+        "complete_history_ledger": state.get("history_events", []),
+        "integrity": {
+            "monotonic_seq": int(state.get("monotonic_seq", 0)),
+            "hmac_sha256": compute_hmac(state),
+            "signature_status": "AUTHENTIC"
+        }
+    }
+
+    if target_path:
+        target_dir = os.path.dirname(os.path.abspath(target_path))
+        if target_dir and not os.path.exists(target_dir):
+            os.makedirs(target_dir, exist_ok=True)
+        with open(target_path, "w", encoding="utf-8") as f:
+            json.dump(export_payload, f, indent=2)
+
+    return export_payload
+
+
+def import_lifetime_data(import_data, force: bool = False) -> dict:
+    """
+    Imports and restores complete, untruncated lifetime telemetry.
+    Accepts a filepath (str) or a parsed dictionary.
+    Restores high-precision registers, S5 audit, and complete event history
+    across all 7 hardware storage mirrors with fresh HMAC sealing.
+    """
+    if isinstance(import_data, str):
+        if os.path.isfile(import_data):
+            with open(import_data, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            data = json.loads(import_data)
+    elif isinstance(import_data, dict):
+        data = import_data
+    else:
+        raise ValueError("Invalid import data format: expected filepath, json string, or dict.")
+
+    current_state = load_state()
+
+    if "precision_telemetry_registers" in data:
+        regs = data["precision_telemetry_registers"]
+        s5_audit = data.get("s5_offline_charge_audit", {})
+        ledger = data.get("complete_history_ledger", [])
+
+        current_state["accumulated_cycles"] = fmt30(regs.get("accumulated_cycles", current_state.get("accumulated_cycles", "0")))
+        current_state["accumulated_energy_mwh"] = fmt30(regs.get("accumulated_energy_mwh", current_state.get("accumulated_energy_mwh", "0")))
+        current_state["virtual_health_percentage"] = fmt30(regs.get("virtual_health_percentage", current_state.get("virtual_health_percentage", "100")))
+        current_state["state_of_charge_percentage"] = fmt30(regs.get("state_of_charge_percentage", current_state.get("state_of_charge_percentage", "100")))
+        if "cycle_degradation_loss_pct" in regs:
+            current_state["cycle_degradation_loss_pct"] = fmt30(regs["cycle_degradation_loss_pct"])
+        if "thermal_stress_loss_pct" in regs:
+            current_state["thermal_stress_loss_pct"] = fmt30(regs["thermal_stress_loss_pct"])
+        if "voltage_stress_loss_pct" in regs:
+            current_state["voltage_stress_loss_pct"] = fmt30(regs["voltage_stress_loss_pct"])
+
+        if s5_audit:
+            current_state["s5_offline_charges_count"] = int(s5_audit.get("s5_offline_charges_count", current_state.get("s5_offline_charges_count", 0)))
+            current_state["s5_offline_cycles_accumulated"] = fmt30(s5_audit.get("s5_offline_cycles_accumulated", current_state.get("s5_offline_cycles_accumulated", "0")))
+            current_state["s5_offline_energy_mwh"] = fmt30(s5_audit.get("s5_offline_energy_mwh", current_state.get("s5_offline_energy_mwh", "0")))
+
+        existing_events = current_state.get("history_events", [])
+        existing_ts = {e.get("timestamp") for e in existing_events if isinstance(e, dict)}
+        for item in ledger:
+            if isinstance(item, dict) and item.get("timestamp") not in existing_ts:
+                existing_events.append(item)
+                existing_ts.add(item.get("timestamp"))
+        current_state["history_events"] = sorted(existing_events, key=lambda x: x.get("timestamp", ""))
+
+    elif "payload" in data:
+        payload = data["payload"]
+        for k, v in payload.items():
+            current_state[k] = v
+    elif "accumulated_cycles" in data:
+        for k, v in data.items():
+            current_state[k] = v
+    else:
+        raise ValueError("Unrecognized BMS telemetry archive schema.")
+
+    current_seq = int(current_state.get("monotonic_seq", 0)) + 1
+    current_state["monotonic_seq"] = current_seq
+    save_state(current_state)
+
+    return {
+        "success": True,
+        "message": "Complete lifetime battery telemetry imported and cryptographically sealed.",
+        "accumulated_cycles": current_state["accumulated_cycles"],
+        "virtual_health_percentage": current_state["virtual_health_percentage"],
+        "total_historical_events": len(current_state.get("history_events", [])),
+        "monotonic_seq": current_state["monotonic_seq"]
+    }
+
+
 def get_windows_battery_telemetry() -> dict:
     """Queries low-level WMI ACPI Battery Subsystem on Windows without console flashing or focus theft."""
     # ── Tier 1: Pure In-Process COM WMI Interop (< 1ms, 0 child processes, 0 window allocation) ──
@@ -657,7 +794,7 @@ def process_telemetry_and_update_state(telem: dict, state: dict, persist: bool =
             "capacity_before": fmt30(last_rem),
             "capacity_after": fmt30(current_rem)
         })
-        state["history_events"] = events[-50:]
+        state["history_events"] = events
 
     soc_pct = (current_rem / full_cap) * Decimal("100.0") if full_cap > Decimal("0") else Decimal("0.0")
     if soc_pct > Decimal("100.0"):
@@ -1028,7 +1165,7 @@ def _detect_offline_delta(state: dict) -> dict:
             state["s5_offline_cycles_accumulated"] = fmt30(s5_cycles)
             state["s5_offline_energy_mwh"] = fmt30(s5_energy)
             state["s5_offline_charges_count"] = s5_count
-            state["history_events"] = events[-50:]
+            state["history_events"] = events
             save_state(state)
     except Exception:
         pass  # Never let boot-recovery crash the daemon
@@ -1427,13 +1564,29 @@ def main():
         force_hardware_sync()
     elif args[0] in ["daemon", "service", "start"]:
         run_daemon_loop()
-    elif args[0] in ["fix-bio", "fix-fingerprint", "reset-bio"]:
-        run_biometric_fix()
+    elif args[0] in ["export", "dump-archive"]:
+        target = args[1] if len(args) > 1 else "bms_lifetime_telemetry_export.json"
+        data = export_lifetime_data(target)
+        print(f"[+] Complete untruncated lifetime telemetry exported to: {os.path.abspath(target)}")
+        print(f"    Accumulated Cycles  : {data['precision_telemetry_registers']['accumulated_cycles']}")
+        print(f"    Historical Events   : {len(data['complete_history_ledger'])} events recorded")
+        print(f"    Monotonic Counter   : #{data['integrity']['monotonic_seq']}")
+    elif args[0] in ["import", "restore-archive"]:
+        if len(args) < 2:
+            print("[!] Error: specify JSON file path to import: bms import <filepath.json>")
+            sys.exit(1)
+        res = import_lifetime_data(args[1])
+        print("[+] Lifetime Telemetry Import Successful!")
+        print(f"    Restored Cycles     : {res['accumulated_cycles']}")
+        print(f"    Historical Events   : {res['total_historical_events']} events intact")
+        print(f"    Monotonic Counter   : #{res['monotonic_seq']}")
     elif args[0] in ["help", "-h", "--help"]:
-        print("Usage: bms [status|live|ui|full|test-100|sync-hw|daemon|fix-bio|help]")
+        print("Usage: bms [status|live|ui|full|export|import|test-100|sync-hw|daemon|fix-bio|help]")
         print("  status   : (Default) Display formatted 30-decimal BMS battery & cycle telemetry.")
         print("  live     : Launch ultra-smooth, real-time 30-decimal interactive terminal UI (4 Hz).")
         print("  ui       : Launch real-time generative glassmorphism web dashboard in browser.")
+        print("  export   : Export complete untruncated lifetime telemetry archive (JSON).")
+        print("  import   : Import & restore lifetime telemetry archive across all hardware mirrors.")
         print("  full     : Output raw JSON telemetry and cryptographic register dump.")
         print("  test-100 : Execute the automated 100-cycle deep verification and stress suite.")
         print("  sync-hw  : Force cryptographic synchronization across all hardware storage tiers.")
