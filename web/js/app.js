@@ -102,8 +102,11 @@ class BmsApplication {
         const state = data.state;
         const thermals = data.thermals;
         const topProcs = data.top_processes;
+        const subsystems = data.subsystems;
+        const bmsOverhead = data.bms_overhead;
         store.setTelemetryAndState(telem, state);
-        this.updateUI(telem, state, data.hardware_identity, thermals, topProcs);
+        this.latestThermals = thermals;
+        this.updateUI(telem, state, data.hardware_identity, thermals, topProcs, subsystems, bmsOverhead);
       } catch (err) {
         console.error("SSE parse error:", err);
       }
@@ -117,7 +120,7 @@ class BmsApplication {
     };
   }
 
-  updateUI(telem, state, hwId, thermals, topProcs) {
+  updateUI(telem, state, hwId, thermals, topProcs, subsystems, bmsOverhead) {
     const chgRate = telem.charge_rate_mw || 0;
     const disRate = telem.discharge_rate_mw || 0;
     const remCap = telem.remaining_capacity_mwh || 69993;
@@ -290,94 +293,73 @@ class BmsApplication {
         current_ma: telem.current_ma || 0,
         power_mw: pNet,
         soc_pct: socFloat,
-        temperature_c: 31.5,
+        temperature_c: (thermals && thermals.cpu_package_temp_c) ? thermals.cpu_package_temp_c : 31.5,
         virtual_health_pct: parseFloat(state.virtual_health_percentage || 99.4)
       });
     }
 
-    this.updateHeroCallout();
-  }
+    // 8. Hardware Subsystems Power Breakdown
+    if (subsystems) {
+      const totalEl = document.getElementById("subsystem-total-badge");
+      if (totalEl) totalEl.textContent = `TOTAL: ${(subsystems.total_system_watts || 0).toFixed(2)} W`;
 
-  updateHeroCallout() {
-    const heroEl = document.getElementById("chart-hero-val");
-    if (!heroEl || !store.telemetry || !store.state) return;
-    const telem = store.telemetry;
-    const state = store.state;
-    const ch = (this.chart && this.chart.activeChannel) || "power_mw";
+      const setSub = (prefix, data) => {
+        if (!data) return;
+        const wEl = document.getElementById(`sub-${prefix}-w`);
+        const pctEl = document.getElementById(`sub-${prefix}-pct`);
+        if (wEl) wEl.textContent = `${(data.watts || 0).toFixed(2)} W`;
+        if (pctEl) pctEl.textContent = `${(data.pct || 0).toFixed(1)}%`;
+      };
 
-    if (ch === "power_mw") {
-      const chgRate = telem.charge_rate_mw || 0;
-      const disRate = telem.discharge_rate_mw || 0;
-      if (telem.charging && chgRate > 0) heroEl.textContent = `+${(chgRate / 1000).toFixed(2)} W Active Charge`;
-      else if (telem.discharging && disRate > 0) heroEl.textContent = `-${(disRate / 1000).toFixed(2)} W Discharge`;
-      else heroEl.textContent = "0.00 W Mains Standby";
-    } else if (ch === "voltage_mv") {
-      heroEl.textContent = `${(telem.voltage_mv / 1000).toFixed(3)} V Terminal Voltage`;
-    } else if (ch === "soc_pct") {
-      heroEl.textContent = `${parseFloat(state.state_of_charge_percentage || 100).toFixed(1)}% State of Charge`;
-    } else if (ch === "virtual_health_pct") {
-      heroEl.textContent = `${parseFloat(state.virtual_health_percentage || 100).toFixed(2)}% Virtual Health`;
-    } else if (ch === "temperature_c") {
-      heroEl.textContent = "31.5 deg C Cell Temperature";
+      setSub("cpu", subsystems.cpu);
+      setSub("gpu", subsystems.gpu);
+      setSub("display", subsystems.display);
+      setSub("audio", subsystems.audio);
+      setSub("storage", subsystems.storage);
+      setSub("ram", subsystems.ram);
+      setSub("aux", subsystems.auxiliary);
+
+      const audioStatus = document.getElementById("sub-audio-status");
+      if (audioStatus && subsystems.audio) {
+        audioStatus.textContent = subsystems.audio.active ? "Active Audio Stream Playback" : "Class-D Amplifiers & DSP (Standby)";
+      }
+
+      const batW = document.getElementById("sub-bat-w");
+      const batStatus = document.getElementById("sub-bat-status");
+      const batSub = document.getElementById("sub-bat-sub");
+      if (batW) {
+        const bW = subsystems.battery_watts || 0;
+        batW.textContent = `${bW > 0 ? "+" : ""}${bW.toFixed(2)} W`;
+        batW.className = `sub-val ${bW > 0 ? "kpi-num-safe" : (bW < 0 ? "kpi-num-warn" : "")}`;
+      }
+      if (batStatus) {
+        batStatus.textContent = telem.charging ? "CHARGING" : (telem.discharging ? "DISCHARGING" : "SATURATED");
+        batStatus.className = `sub-pct ${telem.charging ? "kpi-num-safe" : (telem.discharging ? "kpi-num-warn" : "")}`;
+      }
+      if (batSub) {
+        batSub.textContent = telem.charging ? "Active Cell Pack Absorption" : (telem.discharging ? "Direct Cell Pack Drain" : "AC Mains Bypass Mode");
+      }
     }
-  }
 
-  recordLiveLedgerEvent(telem, state, isFull, chgRate, disRate) {
-    const now = Date.now();
-    const currentStateKey = `${telem.power_online}_${telem.charging}_${telem.discharging}_${isFull}`;
+    // 8.5 BMS Self-Resource Overhead Ribbon Update
+    if (bmsOverhead) {
+      const pidTag = document.getElementById("bms-self-pid-tag");
+      if (pidTag) pidTag.textContent = `PID: ${bmsOverhead.pid}`;
 
-    // Record on state transition or at least once every 10 seconds
-    if (this.lastKnownChargingState !== currentStateKey || now - this.lastLedgerEventTime > 10000) {
-      this.lastKnownChargingState = currentStateKey;
-      this.lastLedgerEventTime = now;
+      const cpuEl = document.getElementById("bms-self-cpu");
+      if (cpuEl) cpuEl.textContent = `${(bmsOverhead.cpu_percent || 0).toFixed(2)}%`;
 
-      const tbody = document.getElementById("ledger-tbody");
-      if (!tbody) return;
+      const ramEl = document.getElementById("bms-self-ram");
+      if (ramEl) ramEl.textContent = `${(bmsOverhead.memory_rss_mb || 0).toFixed(1)} MB`;
 
-      const initRow = document.getElementById("ledger-initial-row");
-      if (initRow) initRow.remove();
+      const pwrEl = document.getElementById("bms-self-pwr");
+      if (pwrEl) pwrEl.textContent = `${(bmsOverhead.power_mw || 0).toFixed(1)} mW`;
 
-      let eventName = "AC Standby Steady State";
-      let eventBadgeClass = "badge-idle";
-      let powerText = "0 mW";
-      let coulombText = "Coulomb Acc Frozen";
+      const energyEl = document.getElementById("bms-self-energy");
+      if (energyEl) energyEl.textContent = `${(bmsOverhead.accumulated_energy_mwh || 0).toFixed(4)} mWh`;
 
-      if (telem.power_online && isFull) {
-        eventName = "AC Mains Bypass / Cells Full";
-        eventBadgeClass = "badge-idle";
-        powerText = "Bypass 0 mW";
-        coulombText = "Cells Saturated (0 drift)";
-      } else if (telem.charging && chgRate > 0) {
-        eventName = "Active Cell Absorption";
-        eventBadgeClass = "badge-charging";
-        powerText = `+${chgRate} mW`;
-        coulombText = "Coulomb Ingestion Active";
-      } else if (telem.discharging && disRate > 0) {
-        eventName = "Active Cell Discharge";
-        eventBadgeClass = "badge-discharging";
-        powerText = `-${disRate} mW`;
-        coulombText = "Discharge Drain";
-      }
-
-      const dStr = new Date(now).toISOString().replace("T", " ").slice(0, 19) + " UTC";
-      const vStr = (telem.voltage_mv / 1000.0).toFixed(3) + " V";
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${dStr}</td>
-        <td><span class="badge-chip ${eventBadgeClass} badge-xs">${eventName}</span></td>
-        <td>${vStr}</td>
-        <td>${powerText}</td>
-        <td>${coulombText}</td>
-        <td><span class="reg-tag-safe">LIVE VERIFIED</span></td>
-      `;
-
-      tbody.insertBefore(tr, tbody.firstChild);
-
-      // Keep ledger bounded to maximum 20 rows
-      while (tbody.children.length > 20) {
-        tbody.removeChild(tbody.lastChild);
-      }
+      const statusEl = document.getElementById("bms-self-status");
+      if (statusEl && bmsOverhead.overhead_status) statusEl.textContent = bmsOverhead.overhead_status;
     }
 
     // 9. Hardware Thermals and DTS Heatmap Update
@@ -454,6 +436,7 @@ class BmsApplication {
           <tr>
             <td class="proc-rank">#${idx + 1}</td>
             <td><span class="proc-name-badge">${p.name}</span><span class="proc-pid">PID ${p.pid}</span></td>
+            <td><span class="badge-chip badge-idle badge-xs">${p.hardware_subsystem || "CPU Compute"}</span></td>
             <td>${p.cpu_pct ? p.cpu_pct.toFixed(1) : "0.0"}%</td>
             <td>${p.gpu_pct ? p.gpu_pct.toFixed(1) : "0.0"}%</td>
             <td>${p.power_watts ? p.power_watts.toFixed(3) : "0.000"} W</td>
@@ -465,10 +448,102 @@ class BmsApplication {
 
       const stackedBar = document.getElementById("proc-stacked-bar");
       if (stackedBar) {
+        stackedBar.textContent = "";
         const palette = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4", "#64748b"];
-        stackedBar.innerHTML = topProcs.slice(0, 7).map((p, i) => `
-          <div class="proc-bar-seg" style="width: ${Math.max(1, p.power_share_pct || 0)}%; background-color: ${palette[i % palette.length]}" title="${p.name}: ${(p.power_share_pct || 0).toFixed(1)}% (${(p.power_watts || 0).toFixed(2)}W)"></div>
-        `).join("");
+        topProcs.slice(0, 7).forEach((p, i) => {
+          const seg = document.createElement("div");
+          seg.className = "proc-bar-seg";
+          seg.style.width = `${Math.max(1, p.power_share_pct || 0)}%`;
+          seg.style.backgroundColor = palette[i % palette.length];
+          seg.title = `${p.name}: ${(p.power_share_pct || 0).toFixed(1)}% (${(p.power_watts || 0).toFixed(2)}W)`;
+          stackedBar.appendChild(seg);
+        });
+      }
+    }
+
+    this.updateHeroCallout();
+  }
+
+  updateHeroCallout() {
+    const heroEl = document.getElementById("chart-hero-val");
+    if (!heroEl || !store.telemetry || !store.state) return;
+    const telem = store.telemetry;
+    const state = store.state;
+    const ch = (this.chart && this.chart.activeChannel) || "power_mw";
+
+    if (ch === "power_mw") {
+      const chgRate = telem.charge_rate_mw || 0;
+      const disRate = telem.discharge_rate_mw || 0;
+      if (telem.charging && chgRate > 0) heroEl.textContent = `+${(chgRate / 1000).toFixed(2)} W Active Charge`;
+      else if (telem.discharging && disRate > 0) heroEl.textContent = `-${(disRate / 1000).toFixed(2)} W Discharge`;
+      else heroEl.textContent = "0.00 W Mains Standby";
+    } else if (ch === "voltage_mv") {
+      heroEl.textContent = `${(telem.voltage_mv / 1000).toFixed(3)} V Terminal Voltage`;
+    } else if (ch === "soc_pct") {
+      heroEl.textContent = `${parseFloat(state.state_of_charge_percentage || 100).toFixed(1)}% State of Charge`;
+    } else if (ch === "virtual_health_pct") {
+      heroEl.textContent = `${parseFloat(state.virtual_health_percentage || 100).toFixed(2)}% Virtual Health`;
+    } else if (ch === "temperature_c") {
+      const curTemp = (this.latestThermals && this.latestThermals.cpu_package_temp_c) || 31.5;
+      heroEl.textContent = `${curTemp.toFixed(1)} \u00B0C DTS Package`;
+    }
+  }
+
+  recordLiveLedgerEvent(telem, state, isFull, chgRate, disRate) {
+    const now = Date.now();
+    const currentStateKey = `${telem.power_online}_${telem.charging}_${telem.discharging}_${isFull}`;
+
+    // Record on state transition or at least once every 10 seconds
+    if (this.lastKnownChargingState !== currentStateKey || now - this.lastLedgerEventTime > 10000) {
+      this.lastKnownChargingState = currentStateKey;
+      this.lastLedgerEventTime = now;
+
+      const tbody = document.getElementById("ledger-tbody");
+      if (!tbody) return;
+
+      const initRow = document.getElementById("ledger-initial-row");
+      if (initRow) initRow.remove();
+
+      let eventName = "AC Standby Steady State";
+      let eventBadgeClass = "badge-idle";
+      let powerText = "0 mW";
+      let coulombText = "Coulomb Acc Frozen";
+
+      if (telem.power_online && isFull) {
+        eventName = "AC Mains Bypass / Cells Full";
+        eventBadgeClass = "badge-idle";
+        powerText = "Bypass 0 mW";
+        coulombText = "Cells Saturated (0 drift)";
+      } else if (telem.charging && chgRate > 0) {
+        eventName = "Active Cell Absorption";
+        eventBadgeClass = "badge-charging";
+        powerText = `+${chgRate} mW`;
+        coulombText = "Coulomb Ingestion Active";
+      } else if (telem.discharging && disRate > 0) {
+        eventName = "Active Cell Discharge";
+        eventBadgeClass = "badge-discharging";
+        powerText = `-${disRate} mW`;
+        coulombText = "Discharge Drain";
+      }
+
+      const dStr = new Date(now).toISOString().replace("T", " ").slice(0, 19) + " UTC";
+      const vStr = (telem.voltage_mv / 1000.0).toFixed(3) + " V";
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${dStr}</td>
+        <td><span class="badge-chip ${eventBadgeClass} badge-xs">${eventName}</span></td>
+        <td>${vStr}</td>
+        <td>${powerText}</td>
+        <td>${coulombText}</td>
+        <td><span class="reg-tag-safe">LIVE VERIFIED</span></td>
+      `;
+
+      tbody.insertBefore(tr, tbody.firstChild);
+
+      // Keep ledger bounded to maximum 20 rows
+      while (tbody.children.length > 20) {
+        tbody.removeChild(tbody.lastChild);
       }
     }
   }
