@@ -571,18 +571,35 @@ def get_windows_battery_telemetry() -> dict:
             static_instances = list(wmi.InstancesOf("BatteryStaticData"))
             design_cap = float(static_instances[0].DesignedCapacity) if static_instances else float(DESIGN_CAPACITY_MWH)
 
+            active = bool(getattr(b_status, "Active", True))
+            charging = bool(getattr(b_status, "Charging", False))
+            discharging = bool(getattr(b_status, "Discharging", False))
+            power_online = bool(getattr(b_status, "PowerOnline", True))
+            rem_cap = float(getattr(b_status, "RemainingCapacity", float(DESIGN_CAPACITY_MWH)))
+            chg_rate = float(getattr(b_status, "ChargeRate", 0.0))
+            dis_rate = float(getattr(b_status, "DischargeRate", 0.0))
+            tag = int(getattr(b_status, "Tag", 38))
+            inst_name = str(getattr(b_status, "InstanceName", "ACPI\\PNP0C0A\\0_0"))
+
+            # Physical cell absorption: only True when receiving power AND has capacity headroom below 100%
+            is_phys_charging = active and charging and power_online and (rem_cap < full_cap) and (chg_rate > 0)
+
             return {
-                "active": bool(getattr(b_status, "Active", True)),
-                "charging": bool(getattr(b_status, "Charging", False)),
-                "discharging": bool(getattr(b_status, "Discharging", False)),
-                "power_online": bool(getattr(b_status, "PowerOnline", True)),
-                "remaining_capacity_mwh": float(getattr(b_status, "RemainingCapacity", float(DESIGN_CAPACITY_MWH))),
+                "active": active,
+                "charging": charging,
+                "discharging": discharging,
+                "power_online": power_online,
+                "remaining_capacity_mwh": rem_cap,
                 "full_charge_capacity_mwh": full_cap,
                 "design_capacity_mwh": design_cap,
                 "voltage_mv": float(getattr(b_status, "Voltage", float(NOMINAL_VOLTAGE_MV))),
-                "charge_rate_mw": float(getattr(b_status, "ChargeRate", 0.0)),
-                "discharge_rate_mw": float(getattr(b_status, "DischargeRate", 0.0)),
-                "source": "Windows WMI In-Process COM"
+                "charge_rate_mw": chg_rate,
+                "discharge_rate_mw": dis_rate,
+                "tag": tag,
+                "instance_name": inst_name,
+                "is_physically_charging": is_phys_charging,
+                "hardware_link": "ONLINE_DIRECT_COM",
+                "source": "Windows WMI ACPI In-Process COM"
             }
     except Exception:
         pass
@@ -590,7 +607,7 @@ def get_windows_battery_telemetry() -> dict:
     # ── Tier 2: Windowless Subprocess Fallback (CREATE_NO_WINDOW + SW_HIDE Shielded) ──
     ps_cmd = (
         "$bStatus = Get-CimInstance -Namespace root\\wmi -ClassName BatteryStatus -ErrorAction SilentlyContinue | "
-        "Select-Object Active, Charging, Discharging, PowerOnline, RemainingCapacity, Voltage, ChargeRate, DischargeRate; "
+        "Select-Object Active, Charging, Discharging, PowerOnline, RemainingCapacity, Voltage, ChargeRate, DischargeRate, Tag, InstanceName; "
         "$bFull = Get-CimInstance -Namespace root\\wmi -ClassName BatteryFullChargedCapacity -ErrorAction SilentlyContinue | "
         "Select-Object FullChargedCapacity; "
         "$bStatic = Get-CimInstance -Namespace root\\wmi -ClassName BatteryStaticData -ErrorAction SilentlyContinue | "
@@ -605,7 +622,9 @@ def get_windows_battery_telemetry() -> dict:
         "  DesignedCapacity = $bStatic.DesignedCapacity; "
         "  Voltage = $bStatus.Voltage; "
         "  ChargeRate = $bStatus.ChargeRate; "
-        "  DischargeRate = $bStatus.DischargeRate "
+        "  DischargeRate = $bStatus.DischargeRate; "
+        "  Tag = $bStatus.Tag; "
+        "  InstanceName = $bStatus.InstanceName "
         "} | ConvertTo-Json"
     )
     try:
@@ -627,17 +646,31 @@ def get_windows_battery_telemetry() -> dict:
         )
         if proc.returncode == 0 and proc.stdout.strip():
             d = json.loads(proc.stdout)
+            active = bool(d.get("Active", True))
+            charging = bool(d.get("Charging", False))
+            discharging = bool(d.get("Discharging", False))
+            power_online = bool(d.get("PowerOnline", True))
+            rem_cap = float(d.get("RemainingCapacity") or float(DESIGN_CAPACITY_MWH))
+            full_cap = float(d.get("FullChargedCapacity") or float(DESIGN_CAPACITY_MWH))
+            design_cap = float(d.get("DesignedCapacity") or float(DESIGN_CAPACITY_MWH))
+            chg_rate = float(d.get("ChargeRate") or 0.0)
+            dis_rate = float(d.get("DischargeRate") or 0.0)
+            is_phys_charging = active and charging and power_online and (rem_cap < full_cap) and (chg_rate > 0)
             return {
-                "active": bool(d.get("Active", True)),
-                "charging": bool(d.get("Charging", False)),
-                "discharging": bool(d.get("Discharging", False)),
-                "power_online": bool(d.get("PowerOnline", True)),
-                "remaining_capacity_mwh": float(d.get("RemainingCapacity") or float(DESIGN_CAPACITY_MWH)),
-                "full_charge_capacity_mwh": float(d.get("FullChargedCapacity") or float(DESIGN_CAPACITY_MWH)),
-                "design_capacity_mwh": float(d.get("DesignedCapacity") or float(DESIGN_CAPACITY_MWH)),
+                "active": active,
+                "charging": charging,
+                "discharging": discharging,
+                "power_online": power_online,
+                "remaining_capacity_mwh": rem_cap,
+                "full_charge_capacity_mwh": full_cap,
+                "design_capacity_mwh": design_cap,
                 "voltage_mv": float(d.get("Voltage") or float(NOMINAL_VOLTAGE_MV)),
-                "charge_rate_mw": float(d.get("ChargeRate") or 0.0),
-                "discharge_rate_mw": float(d.get("DischargeRate") or 0.0),
+                "charge_rate_mw": chg_rate,
+                "discharge_rate_mw": dis_rate,
+                "tag": int(d.get("Tag", 38)),
+                "instance_name": str(d.get("InstanceName", "ACPI\\PNP0C0A\\0_0")),
+                "is_physically_charging": is_phys_charging,
+                "hardware_link": "ONLINE_DIRECT_FALLBACK",
                 "source": "Windows WMI ACPI Subsystem (Windowless Fallback)"
             }
     except Exception:
@@ -862,8 +895,27 @@ def print_bms_dashboard(telem: dict, state: dict):
     print(f"  Cell Chemistry         : {CELL_CHEMISTRY}")
     print(f"  Nominal Pack Voltage   : {float(NOMINAL_VOLTAGE_MV) / 1000.0:.2f} V ({float(NOMINAL_VOLTAGE_MV):.0f} mV)")
     print(f"  ACPI Device Path       : {ACPI_DSDT_PATH}")
+    tag = telem.get("tag", "38")
+    inst = telem.get("instance_name", "ACPI\\PNP0C0A\\0_0")
+    print(f"  Architectural Link     : ONLINE DIRECT ({inst} · Tag #{tag})")
+
+    is_phys_chg = telem.get("is_physically_charging", False)
+    if rem_cap >= full_cap and telem.get("power_online"):
+        phys_cell_state = "FULLY CHARGED (100.0%) - CELLS SATURATED"
+        acc_state = "\033[1;33mSTOPPED (0 mW Cell Ingestion · Exact 30-Decimal Frozen)\033[0m"
+    elif is_phys_chg:
+        phys_cell_state = f"ACTIVELY CHARGING (+{float(telem['charge_rate_mw']):,.0f} mW Ingested)"
+        acc_state = "\033[1;32mACTIVE (Coulomb Integration Running)\033[0m"
+    elif telem.get("discharging"):
+        phys_cell_state = f"DISCHARGING ON BATTERY (-{float(telem.get('discharge_rate_mw', 0)):,.0f} mW Drain)"
+        acc_state = "\033[1;33mSTOPPED (Discharge Mode · No Cycle Accumulation)\033[0m"
+    else:
+        phys_cell_state = "AC CONNECTED (STANDBY IDLE)"
+        acc_state = "\033[1;34mSTOPPED (Standby Mode)\033[0m"
 
     print("\n [CAPACITY & REAL-TIME POWER DYNAMICS]")
+    print(f"  Physical Cell Status   : {phys_cell_state}")
+    print(f"  Cycle Engine Status    : {acc_state}")
     print(f"  Design Capacity        : {float(design_cap):,.0f} mWh ({float(design_cap)/1000.0:.3f} Wh)")
     print(f"  Full Charge Capacity   : {float(full_cap):,.0f} mWh ({float(full_cap)/1000.0:.3f} Wh)")
     print(f"  Current Remaining      : {float(rem_cap):,.0f} mWh ({float(rem_cap)/1000.0:.3f} Wh)")
@@ -1229,18 +1281,29 @@ def _render_live_tui_frame(telem: dict, state: dict, status_msg: str, paused: bo
 
     is_chg = telem.get("charging", False)
     is_dis = telem.get("discharging", False)
+    p_online = telem.get("power_online", True)
     chg_rate = float(telem.get("charge_rate_mw", 0.0))
     dis_rate = float(telem.get("discharge_rate_mw", 0.0))
     voltage_mv = float(telem.get("voltage_mv", 11550.0))
+    tag = telem.get("tag", 38)
+    inst = telem.get("instance_name", "ACPI\\PNP0C0A\\0_0")
 
-    if is_chg:
-        mode_badge = f"\033[1;42;30m [CHARGING: +{chg_rate:,.0f} mW] \033[0m"
+    is_full = rem_cap >= full_cap
+    if p_online and is_full:
+        mode_badge = "\033[1;42;30m [BATTERY 100% FULL - CELLS SATURATED] \033[0m"
+        acc_status = "\033[1;33m[STOPPED / IDLE (0 mW Ingested · Counter Frozen)]\033[0m"
+        p_val = "0.00 W (Float)"
+    elif is_chg and chg_rate > 0 and not is_full:
+        mode_badge = f"\033[1;42;30m [ACTIVELY CHARGING: +{chg_rate:,.0f} mW] \033[0m"
+        acc_status = f"\033[1;32m[RUNNING - COULOMB COUNTING: +{chg_rate:,.0f} mW]\033[0m"
         p_val = f"+{chg_rate/1000.0:.2f} W"
     elif is_dis:
         mode_badge = f"\033[1;43;30m [DISCHARGING: -{dis_rate:,.0f} mW] \033[0m"
+        acc_status = "\033[1;33m[STOPPED / DISCHARGING (On Battery)]\033[0m"
         p_val = f"-{dis_rate/1000.0:.2f} W"
     else:
-        mode_badge = f"\033[1;44;37m [AC MAINS IDLE] \033[0m"
+        mode_badge = f"\033[1;44;37m [AC MAINS STANDBY IDLE] \033[0m"
+        acc_status = "\033[1;34m[STOPPED / STANDBY]\033[0m"
         p_val = "0.00 W"
 
     # Calculate Progress Bar (40 chars)
@@ -1272,11 +1335,13 @@ def _render_live_tui_frame(telem: dict, state: dict, status_msg: str, paused: bo
         "========================================================================================",
         "  \033[1;37mBMS ULTRA-HIGH-PRECISION REAL-TIME TELEMETRY ENGINE\033[0m  [\033[1;36mEM_IDL822_V2.0 / Raptor Lake-P\033[0m]",
         "========================================================================================",
+        f"  Hardware Comm    : \033[1;32mONLINE DIRECT\033[0m (Direct COM to {inst} · Tag #{tag})",
         f"  Telemetry State  : \033[1;32m{status_icon:<20}\033[0m | Source: \033[1;33m{telem.get('source', 'WMI COM')[:28]}\033[0m",
         f"  Timestamp (UTC)  : {ts_now:<22} | Master Key: {HARDWARE_KEY_HEX[:12]}...{HARDWARE_KEY_HEX[-6:]}",
         "----------------------------------------------------------------------------------------",
         f"  BATTERY STATE    : {mode_badge}  Terminal Voltage: \033[1;37m{voltage_mv/1000.0:.3f} V\033[0m",
         f"  ENERGY RESERVE   : [{bar}] \033[1;36m{float(soc_pct[:10]):.2f}%\033[0m ({float(rem_cap):,.0f} / {float(full_cap):,.0f} mWh)",
+        f"  CELL INGESTION   : {acc_status}",
         f"  LIVE POWER FLOW  : \033[1;35m{p_val:<10}\033[0m History: [{sparkline}]",
         "----------------------------------------------------------------------------------------",
         " [30-DECIMAL CONTINUOUS HIGH-PRECISION REGISTERS (REAL-TIME COULOMB INTEGRATION)]",
@@ -1405,12 +1470,16 @@ def run_live_tui(refresh_interval: float = 0.25):
                 accum_cycles = to_dec30(state.get("accumulated_cycles", HISTORICAL_BASELINE_CYCLES))
                 accum_energy = to_dec30(state.get("accumulated_energy_mwh", HISTORICAL_BASELINE_MWH))
 
-                if telem.get("charging") and chg_mw > 0:
+                # Strictly gate cycle accumulation: only increment if battery has capacity headroom to absorb energy!
+                is_cell_absorbing = telem.get("charging") and chg_mw > 0 and (cur_rem < full_cap)
+                if is_cell_absorbing:
+                    headroom_e = full_cap - cur_rem
                     delta_e = to_dec30(Decimal(str(chg_mw)) * Decimal(str(dt)) / Decimal("3600.0"))
-                    delta_cyc = delta_e / design_cap
-                    cur_rem = min(full_cap, cur_rem + delta_e)
+                    actual_e = min(delta_e, headroom_e)
+                    delta_cyc = actual_e / design_cap
+                    cur_rem = min(full_cap, cur_rem + actual_e)
                     accum_cycles += delta_cyc
-                    accum_energy += delta_e
+                    accum_energy += actual_e
                 elif telem.get("discharging") and dis_mw > 0:
                     delta_e = to_dec30(Decimal(str(dis_mw)) * Decimal(str(dt)) / Decimal("3600.0"))
                     cur_rem = max(Decimal("0.0"), cur_rem - delta_e)

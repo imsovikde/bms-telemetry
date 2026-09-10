@@ -306,6 +306,31 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
   </header>
 
   <div class="grid">
+    <!-- Hardware Link & Physical Cell Absorption Architecture Banner -->
+    <div class="card card-hw-link" style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; padding: 14px 20px; background: rgba(13, 20, 32, 0.85); border: 1px solid rgba(0, 240, 255, 0.25);">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div id="hw-pulse-dot" style="width:10px; height:10px; border-radius:50%; background:var(--emerald); box-shadow:0 0 10px var(--emerald);"></div>
+        <div>
+          <div style="font-size:10px; font-family:var(--font-mono); color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">Architectural Hardware Link</div>
+          <div id="hw-comm-name" style="font-size:12px; font-weight:700; font-family:var(--font-mono); color:#fff;">DIRECT ACPI BUS: \_SB.PC00.LPCB.H_EC.BAT0 (ACPI\PNP0C0A\0_0) · Tag #<span id="hw-tag">38</span></div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+        <div>
+          <div style="font-size:10px; font-family:var(--font-mono); color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">Physical Cell Status</div>
+          <div id="hw-cell-status" style="font-size:12px; font-weight:700; font-family:var(--font-mono); color:var(--emerald);">FULLY CHARGED (100.0%)</div>
+        </div>
+        <div>
+          <div style="font-size:10px; font-family:var(--font-mono); color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">Cycle Accumulator</div>
+          <div id="hw-cycle-acc-state" class="badge-chip badge-idle" style="font-size:10px; padding: 3px 8px;">FROZEN / STOPPED</div>
+        </div>
+        <div>
+          <div style="font-size:10px; font-family:var(--font-mono); color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">Silicon Chemistry</div>
+          <div id="hw-chem" style="font-size:12px; font-weight:700; font-family:var(--font-mono); color:var(--cyan);">LION (0x6C696F6E) · 3S Nominal</div>
+        </div>
+      </div>
+    </div>
+
     <!-- SVG Circular Gauge -->
     <div class="card card-gauge">
       <svg class="gauge-svg" viewBox="0 0 200 200">
@@ -499,8 +524,15 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
       const badge = document.getElementById('status-badge');
       const chgRate = telem.charge_rate_mw || 0;
       const disRate = telem.discharge_rate_mw || 0;
+      const remCap = telem.remaining_capacity_mwh || 69993;
+      const fccCap = telem.full_charge_capacity_mwh || 69993;
+      const isFull = remCap >= fccCap;
 
-      if (telem.charging) {
+      if (telem.power_online && isFull) {
+        badge.className = 'badge-chip badge-idle';
+        badge.textContent = `100% FULL (CELLS SATURATED)`;
+        updateWaveform(0);
+      } else if (telem.charging && chgRate > 0) {
         badge.className = 'badge-chip badge-charging';
         badge.textContent = `CHARGING: +${(chgRate/1000).toFixed(2)} W`;
         updateWaveform(chgRate);
@@ -512,6 +544,36 @@ HTML_DASHBOARD = r"""<!DOCTYPE html>
         badge.className = 'badge-chip badge-idle';
         badge.textContent = `AC MAINS IDLE`;
         updateWaveform(0);
+      }
+
+      // Update Hardware Comm & Cell Absorption Card
+      if (document.getElementById('hw-tag')) {
+        document.getElementById('hw-tag').textContent = telem.tag || 38;
+      }
+      if (document.getElementById('hw-cell-status')) {
+        const cellEl = document.getElementById('hw-cell-status');
+        const accEl = document.getElementById('hw-cycle-acc-state');
+        if (telem.power_online && isFull) {
+          cellEl.textContent = 'FULLY CHARGED (100.0%) - CELLS SATURATED';
+          cellEl.style.color = 'var(--emerald)';
+          accEl.textContent = 'STOPPED / FROZEN (0 mW Ingested)';
+          accEl.className = 'badge-chip badge-idle';
+        } else if (telem.charging && chgRate > 0 && !isFull) {
+          cellEl.textContent = `ACTIVELY ABSORBING CHARGE (+${(chgRate/1000).toFixed(2)} W)`;
+          cellEl.style.color = 'var(--emerald)';
+          accEl.textContent = 'RUNNING (COULOMB INTEGRATION ACTIVE)';
+          accEl.className = 'badge-chip badge-charging';
+        } else if (telem.discharging) {
+          cellEl.textContent = `DISCHARGING ON BATTERY (-${(disRate/1000).toFixed(2)} W)`;
+          cellEl.style.color = 'var(--amber)';
+          accEl.textContent = 'STOPPED (DISCHARGE)';
+          accEl.className = 'badge-chip badge-discharging';
+        } else {
+          cellEl.textContent = 'AC MAINS STANDBY (IDLE)';
+          cellEl.style.color = 'var(--cyan)';
+          accEl.textContent = 'STOPPED (STANDBY)';
+          accEl.className = 'badge-chip badge-idle';
+        }
       }
 
       // Update Gauge
@@ -681,12 +743,17 @@ class BMSHandler(BaseHTTPRequestHandler):
                     accum_cyc = engine.to_dec30(state.get("accumulated_cycles", engine.HISTORICAL_BASELINE_CYCLES))
                     accum_e = engine.to_dec30(state.get("accumulated_energy_mwh", engine.HISTORICAL_BASELINE_MWH))
 
-                    if telem.get("charging") and chg_mw > 0:
+                    # Strictly gate cycle accumulation: only increment if battery has capacity headroom to absorb energy!
+                    is_cell_absorbing = telem.get("charging") and chg_mw > 0 and (cur_rem < full_cap)
+
+                    if is_cell_absorbing:
+                        headroom_e = full_cap - cur_rem
                         d_e = engine.to_dec30(Decimal(str(chg_mw)) * Decimal(str(dt)) / Decimal("3600.0"))
-                        d_cyc = d_e / design_cap
-                        cur_rem = min(full_cap, cur_rem + d_e)
+                        actual_d_e = min(d_e, headroom_e)
+                        d_cyc = actual_d_e / design_cap
+                        cur_rem = min(full_cap, cur_rem + actual_d_e)
                         accum_cyc += d_cyc
-                        accum_e += d_e
+                        accum_e += actual_d_e
                     elif telem.get("discharging") and dis_mw > 0:
                         d_e = engine.to_dec30(Decimal(str(dis_mw)) * Decimal(str(dt)) / Decimal("3600.0"))
                         cur_rem = max(Decimal("0.0"), cur_rem - d_e)
