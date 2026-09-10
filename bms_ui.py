@@ -2297,15 +2297,49 @@ class BMSHandler(BaseHTTPRequestHandler):
         elif path == "/api/export/csv":
             try:
                 storage_eng = storage.get_storage_engine()
-                self.send_response(200)
-                self.send_header("Content-Type", "text/csv; charset=utf-8")
-                self.send_header("Content-Disposition", 'attachment; filename="bms_telemetry_history.csv"')
-                self.send_header("Access-Control-Allow-Origin", "*")
-                self.end_headers()
-                for chunk in storage_eng.export_csv_stream():
-                    self.wfile.write(chunk.encode("utf-8"))
+                compress = query_params.get("compress", ["false"])[0].lower() in ("gzip", "gz", "true", "1")
+                if compress:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/gzip")
+                    self.send_header("Content-Disposition", 'attachment; filename="bms_telemetry_history.csv.gz"')
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    for chunk in storage_eng.export_csv_gz_stream():
+                        self.wfile.write(chunk)
+                else:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/csv; charset=utf-8")
+                    self.send_header("Content-Disposition", 'attachment; filename="bms_telemetry_history.csv"')
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    for chunk in storage_eng.export_csv_stream():
+                        self.wfile.write(chunk.encode("utf-8"))
             except Exception as exc:
                 self.send_error(500, f"CSV export failure: {exc}")
+        elif path == "/api/export/csv.gz":
+            try:
+                storage_eng = storage.get_storage_engine()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/gzip")
+                self.send_header("Content-Disposition", 'attachment; filename="bms_telemetry_history.csv.gz"')
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                for chunk in storage_eng.export_csv_gz_stream():
+                    self.wfile.write(chunk)
+            except Exception as exc:
+                self.send_error(500, f"CSV gzip export failure: {exc}")
+        elif path == "/api/export/json.gz":
+            try:
+                storage_eng = storage.get_storage_engine()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/gzip")
+                self.send_header("Content-Disposition", 'attachment; filename="bms_lifetime_telemetry_export.json.gz"')
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                for chunk in storage_eng.export_json_gz_stream():
+                    self.wfile.write(chunk)
+            except Exception as exc:
+                self.send_error(500, f"JSON gzip export failure: {exc}")
         elif path == "/api/export":
             try:
                 export_data = engine.export_lifetime_data()
@@ -2320,16 +2354,27 @@ class BMSHandler(BaseHTTPRequestHandler):
                 self.send_error(500, f"Export failure: {exc}")
         elif path == "/api/export/json":
             try:
-                storage_eng = storage.get_storage_engine()
-                export_data = storage_eng.export_json()
-                export_data["engine_state"] = engine.export_lifetime_data()
-                raw = json.dumps(export_data, indent=2).encode("utf-8")
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.send_header("Content-Disposition", 'attachment; filename="bms_lifetime_telemetry_export.json"')
-                self.send_header("Access-Control-Allow-Origin", "*")
-                self.end_headers()
-                self.wfile.write(raw)
+                compress = query_params.get("compress", ["false"])[0].lower() in ("gzip", "gz", "true", "1")
+                if compress:
+                    storage_eng = storage.get_storage_engine()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/gzip")
+                    self.send_header("Content-Disposition", 'attachment; filename="bms_lifetime_telemetry_export.json.gz"')
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    for chunk in storage_eng.export_json_gz_stream():
+                        self.wfile.write(chunk)
+                else:
+                    storage_eng = storage.get_storage_engine()
+                    export_data = storage_eng.export_json(limit=None)
+                    export_data["engine_state"] = engine.export_lifetime_data()
+                    raw = json.dumps(export_data, indent=2).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Content-Disposition", 'attachment; filename="bms_lifetime_telemetry_export.json"')
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(raw)
             except Exception as exc:
                 self.send_error(500, f"JSON export failure: {exc}")
         else:
@@ -2379,6 +2424,11 @@ class BMSHandler(BaseHTTPRequestHandler):
 
 
 def start_server(port: int = 8989, open_browser: bool = True):
+    try:
+        st = engine.load_state()
+        engine._detect_offline_delta(st)
+    except Exception:
+        pass
     server = ThreadingHTTPServer(("127.0.0.1", port), BMSHandler)
     url = f"http://127.0.0.1:{port}"
     print("\n" + "=" * 76)

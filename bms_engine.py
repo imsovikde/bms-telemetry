@@ -1408,6 +1408,45 @@ def _detect_offline_delta(state: dict) -> dict:
             state["s5_offline_charges_count"] = s5_count
             state["history_events"] = events
             save_state(state)
+
+            try:
+                import bms_storage
+                bms_storage.get_storage_engine().record_s5_offline_event(
+                    event_type="S5_OFFLINE_CHARGE",
+                    delta_mwh=float(delta_e),
+                    delta_cycles=fmt30(delta_cycles),
+                    capacity_before=float(q_shutdown),
+                    capacity_after=float(q_boot)
+                )
+            except Exception:
+                pass
+        elif delta_e < Decimal("-50.0"):
+            # Device drained / discharged while powered off or in alternate OS
+            drain_mwh = abs(delta_e)
+            events = state.get("history_events", [])
+            events.append({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "type": "S5_OFFLINE_DRAIN_BOOT_RECOVERY",
+                "delta_mwh": fmt30(delta_e),
+                "drain_mwh": fmt30(drain_mwh),
+                "capacity_at_shutdown": fmt30(q_shutdown),
+                "capacity_at_boot": fmt30(q_boot),
+            })
+            state["history_events"] = events
+            state["s5_offline_drain_count"] = int(state.get("s5_offline_drain_count", 0)) + 1
+            save_state(state)
+
+            try:
+                import bms_storage
+                bms_storage.get_storage_engine().record_s5_offline_event(
+                    event_type="S5_OFFLINE_DRAIN",
+                    delta_mwh=float(delta_e),
+                    delta_cycles="0.000000000000000000000000000000",
+                    capacity_before=float(q_shutdown),
+                    capacity_after=float(q_boot)
+                )
+            except Exception:
+                pass
     except Exception:
         pass  # Never let boot-recovery crash the daemon
 
