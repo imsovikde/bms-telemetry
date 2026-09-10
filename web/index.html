@@ -129,6 +129,22 @@
     </div>
   </div>
 
+  <!-- 2.5 BMS Telemetry Self-Resource Overhead Ribbon -->
+  <div class="bms-overhead-banner">
+    <div class="bms-overhead-left">
+      <span class="pulse-dot pulse-dot-safe"></span>
+      <span>BMS TELEMETRY SELF-RESOURCE CONSUMPTION</span>
+      <span class="badge-chip badge-idle badge-xs" id="bms-self-pid-tag">PID: --</span>
+    </div>
+    <div class="bms-overhead-stats">
+      <span>CPU: <strong id="bms-self-cpu">--%</strong></span>
+      <span>RAM: <strong id="bms-self-ram">-- MB</strong></span>
+      <span>Power: <strong id="bms-self-pwr">-- mW</strong></span>
+      <span>Energy: <strong id="bms-self-energy">-- mWh</strong></span>
+      <span class="reg-tag-safe" id="bms-self-status">ULTRA-LOW OVERHEAD</span>
+    </div>
+  </div>
+
   <!-- 3. Primary Hero Section: Interactive Shadcn Telemetry Chart Stage -->
   <section class="hero-chart-section">
     <div class="chart-header">
@@ -449,6 +465,91 @@
     </div>
   </section>
 
+  <!-- 5.55 Hardware Subsystem Power & Energy Breakdown -->
+  <section class="card-subsystems">
+    <div class="thermals-header">
+      <div class="thermals-title-wrap">
+        <span class="pulse-dot pulse-dot-safe"></span>
+        <span class="ledger-title">HARDWARE SUBSYSTEM POWER &amp; ENERGY DYNAMICS</span>
+      </div>
+      <span class="badge-chip badge-idle badge-xs" id="subsystem-total-badge">TOTAL: -- W</span>
+    </div>
+
+    <div class="subsystem-grid">
+      <div class="sub-card">
+        <div class="sub-card-header">
+          <span class="sub-name">CPU Package</span>
+          <span class="sub-pct" id="sub-cpu-pct">--%</span>
+        </div>
+        <div class="sub-val" id="sub-cpu-w">-- W</div>
+        <div class="sub-sub">Intel Core i5-13500H Subsystem</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-card-header">
+          <span class="sub-name">GPU Engine</span>
+          <span class="sub-pct" id="sub-gpu-pct">--%</span>
+        </div>
+        <div class="sub-val" id="sub-gpu-w">-- W</div>
+        <div class="sub-sub">Intel Iris Xe 3D &amp; Video Decode</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-card-header">
+          <span class="sub-name">Display &amp; Backlight</span>
+          <span class="sub-pct" id="sub-display-pct">--%</span>
+        </div>
+        <div class="sub-val" id="sub-display-w">-- W</div>
+        <div class="sub-sub">15.6" FHD IPS Panel Controller</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-card-header">
+          <span class="sub-name">Speaker &amp; Audio DSP</span>
+          <span class="sub-pct" id="sub-audio-pct">--%</span>
+        </div>
+        <div class="sub-val" id="sub-audio-w">-- W</div>
+        <div class="sub-sub" id="sub-audio-status">Class-D Amplifiers &amp; DSP</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-card-header">
+          <span class="sub-name">PCIe NVMe Storage</span>
+          <span class="sub-pct" id="sub-storage-pct">--%</span>
+        </div>
+        <div class="sub-val" id="sub-storage-w">-- W</div>
+        <div class="sub-sub">M.2 SSD Controller &amp; NAND</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-card-header">
+          <span class="sub-name">LPDDR5 Memory</span>
+          <span class="sub-pct" id="sub-ram-pct">--%</span>
+        </div>
+        <div class="sub-val" id="sub-ram-w">-- W</div>
+        <div class="sub-sub">16GB System Memory Bus</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-card-header">
+          <span class="sub-name">Fans &amp; System Aux</span>
+          <span class="sub-pct" id="sub-aux-pct">--%</span>
+        </div>
+        <div class="sub-val" id="sub-aux-w">-- W</div>
+        <div class="sub-sub">Cooling Fans, VRM &amp; Wi-Fi 6E</div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-card-header">
+          <span class="sub-name">Battery Net Flow</span>
+          <span class="sub-pct" id="sub-bat-status">LIVE IOCTL</span>
+        </div>
+        <div class="sub-val" id="sub-bat-w">-- W</div>
+        <div class="sub-sub" id="sub-bat-sub">Direct Cell Pack Absorption</div>
+      </div>
+    </div>
+  </section>
+
   <!-- 5.6 Process-Level Power & Resource Attribution -->
   <section class="card-processes">
     <div class="processes-header">
@@ -469,6 +570,7 @@
           <tr>
             <th>Rank</th>
             <th>Process Name</th>
+            <th>Subsystem</th>
             <th>CPU Load</th>
             <th>GPU Engine</th>
             <th>Attributed Power</th>
@@ -478,7 +580,7 @@
         </thead>
         <tbody id="proc-tbody">
           <tr>
-            <td colspan="7" class="ledger-empty">Awaiting process attribution sampling...</td>
+            <td colspan="8" class="ledger-empty">Awaiting process attribution sampling...</td>
           </tr>
         </tbody>
       </table>
