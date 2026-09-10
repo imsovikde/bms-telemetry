@@ -1,0 +1,46 @@
+name: Bug Report
+description: Report a defect, unexpected behavior, or telemetry anomaly
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report an issue with **BMS Telemetry**.
+  - type: input
+    id: os_version
+    attributes:
+      label: Operating System & Version
+      description: What OS and build are you running? (e.g., Windows 11 Build 26100, Ubuntu 24.04 LTS, macOS Sonoma 14.5)
+      placeholder: Windows 11 23H2 (Build 22631)
+    validations:
+      required: true
+  - type: input
+    id: hardware_info
+    attributes:
+      label: Laptop / Hardware Model
+      description: Baseboard model or laptop brand (e.g., Infinix ZERO BOOK 13 / EM_IDL822_V2.0)
+      placeholder: Infinix ZERO BOOK 13
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Mechanistic description of what went wrong.
+    validations:
+      required: true
+  - type: textarea
+    id: terminal_output
+    attributes:
+      label: Terminal Output / Command Logs
+      description: Paste raw terminal output from `bms status` or `bms test-100`.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: What should have occurred instead?
+    validations:
+      required: true

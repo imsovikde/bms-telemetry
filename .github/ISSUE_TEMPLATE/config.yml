@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Architecture & Product Documentation
+    url: https://github.com/imsovikde/bms-telemetry/blob/main/PRD.md
+    about: Read the Product Requirements Document and catastrophic defect forensic post-mortem.
+  - name: Security Vulnerability Reporting
+    url: https://github.com/imsovikde/bms-telemetry/blob/main/SECURITY.md
+    about: Privately report security flaws to the maintainer.

@@ -408,7 +408,36 @@ def save_state(state: dict):
 
 
 def get_windows_battery_telemetry() -> dict:
-    """Queries low-level WMI ACPI Battery Subsystem on Windows."""
+    """Queries low-level WMI ACPI Battery Subsystem on Windows without console flashing or focus theft."""
+    # ── Tier 1: Pure In-Process COM WMI Interop (< 1ms, 0 child processes, 0 window allocation) ──
+    try:
+        import win32com.client
+        wmi = win32com.client.GetObject("winmgmts:\\\\.\\root\\wmi")
+        status_instances = list(wmi.InstancesOf("BatteryStatus"))
+        if status_instances:
+            b_status = status_instances[0]
+            full_instances = list(wmi.InstancesOf("BatteryFullChargedCapacity"))
+            full_cap = float(full_instances[0].FullChargedCapacity) if full_instances else float(DESIGN_CAPACITY_MWH)
+            static_instances = list(wmi.InstancesOf("BatteryStaticData"))
+            design_cap = float(static_instances[0].DesignedCapacity) if static_instances else float(DESIGN_CAPACITY_MWH)
+
+            return {
+                "active": bool(getattr(b_status, "Active", True)),
+                "charging": bool(getattr(b_status, "Charging", False)),
+                "discharging": bool(getattr(b_status, "Discharging", False)),
+                "power_online": bool(getattr(b_status, "PowerOnline", True)),
+                "remaining_capacity_mwh": float(getattr(b_status, "RemainingCapacity", float(DESIGN_CAPACITY_MWH))),
+                "full_charge_capacity_mwh": full_cap,
+                "design_capacity_mwh": design_cap,
+                "voltage_mv": float(getattr(b_status, "Voltage", float(NOMINAL_VOLTAGE_MV))),
+                "charge_rate_mw": float(getattr(b_status, "ChargeRate", 0.0)),
+                "discharge_rate_mw": float(getattr(b_status, "DischargeRate", 0.0)),
+                "source": "Windows WMI In-Process COM"
+            }
+    except Exception:
+        pass
+
+    # ── Tier 2: Windowless Subprocess Fallback (CREATE_NO_WINDOW + SW_HIDE Shielded) ──
     ps_cmd = (
         "$bStatus = Get-CimInstance -Namespace root\\wmi -ClassName BatteryStatus -ErrorAction SilentlyContinue | "
         "Select-Object Active, Charging, Discharging, PowerOnline, RemainingCapacity, Voltage, ChargeRate, DischargeRate; "
@@ -430,7 +459,22 @@ def get_windows_battery_telemetry() -> dict:
         "} | ConvertTo-Json"
     )
     try:
-        proc = subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, text=True, timeout=8)
+        si = None
+        cflags = 0
+        if platform.system() == "Windows":
+            si = subprocess.STARTUPINFO()
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = subprocess.SW_HIDE
+            cflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_cmd],
+            capture_output=True,
+            text=True,
+            timeout=8,
+            startupinfo=si,
+            creationflags=cflags
+        )
         if proc.returncode == 0 and proc.stdout.strip():
             d = json.loads(proc.stdout)
             return {
@@ -438,13 +482,13 @@ def get_windows_battery_telemetry() -> dict:
                 "charging": bool(d.get("Charging", False)),
                 "discharging": bool(d.get("Discharging", False)),
                 "power_online": bool(d.get("PowerOnline", True)),
-                "remaining_capacity_mwh": float(d.get("RemainingCapacity") or 69993.0),
-                "full_charge_capacity_mwh": float(d.get("FullChargedCapacity") or 69993.0),
-                "design_capacity_mwh": float(d.get("DesignedCapacity") or 69993.0),
-                "voltage_mv": float(d.get("Voltage") or 11550.0),
+                "remaining_capacity_mwh": float(d.get("RemainingCapacity") or float(DESIGN_CAPACITY_MWH)),
+                "full_charge_capacity_mwh": float(d.get("FullChargedCapacity") or float(DESIGN_CAPACITY_MWH)),
+                "design_capacity_mwh": float(d.get("DesignedCapacity") or float(DESIGN_CAPACITY_MWH)),
+                "voltage_mv": float(d.get("Voltage") or float(NOMINAL_VOLTAGE_MV)),
                 "charge_rate_mw": float(d.get("ChargeRate") or 0.0),
                 "discharge_rate_mw": float(d.get("DischargeRate") or 0.0),
-                "source": "Windows WMI ACPI Subsystem"
+                "source": "Windows WMI ACPI Subsystem (Windowless Fallback)"
             }
     except Exception:
         pass
@@ -1037,7 +1081,17 @@ def run_biometric_fix():
             "Credential Providers\\{D6886603-9D2F-4EB2-B667-1971041FA96B}\\S-1-5-21-2353699181-3124710143-1951722907-1001\\NgcFirst' -ErrorAction SilentlyContinue; "
             "if ($ngc) { [PSCustomObject]@{ OptOutBio = $ngc.OptOutBio; ConsecutiveSwitchCountBio = $ngc.ConsecutiveSwitchCountBio } | ConvertTo-Json }"
         )
-        res = subprocess.run(["powershell", "-NoProfile", "-Command", ps_check], capture_output=True, text=True)
+        si = subprocess.STARTUPINFO()
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = subprocess.SW_HIDE
+        cflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        res = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_check],
+            capture_output=True,
+            text=True,
+            startupinfo=si,
+            creationflags=cflags
+        )
         if res.returncode == 0 and res.stdout.strip():
             d = json.loads(res.stdout)
             print(f"Current OptOutBio: {d.get('OptOutBio')} | ConsecutiveSwitchCountBio: {d.get('ConsecutiveSwitchCountBio')}")
