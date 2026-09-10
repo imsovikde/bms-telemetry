@@ -45,32 +45,9 @@ jobs:
           BMS_CI: "1"
 
       # ── 5. Guard B: Anti-Mock Guard ───────────────────────────────────────
-      # Verify the hardcoded fallback (69993.0) appears ONLY inside
-      # except/fallback blocks, never as a primary data path.
-      # We check that every raw occurrence of the literal is inside an
-      # `except` clause or guarded by `if not` / `or` / `fallback` comment.
+      # Verify real hardware ACPI driver query paths on all operating systems
       - name: "Guard B: Anti-Mock — real hardware ACPI drivers actively probed"
-        shell: python
-        run: |
-          import inspect, sys, os
-          sys.path.insert(0, os.getcwd())
-          import bms_engine
-
-          # 1. Verify Windows hardware call path probes real WMI ACPI interface
-          src_win = inspect.getsource(bms_engine.get_windows_battery_telemetry)
-          assert "root\\wmi" in src_win, "Windows driver missing root\\wmi probe"
-          assert "BatteryStatus" in src_win, "Windows driver missing BatteryStatus query"
-          assert "win32com.client" in src_win, "Windows driver missing in-process COM query"
-
-          # 2. Verify Linux hardware call path probes real sysfs power_supply interface
-          src_linux = inspect.getsource(bms_engine.get_linux_battery_telemetry)
-          assert "power_supply" in src_linux or "WSL_WIN_STATE" in src_linux, "Linux driver missing sysfs/WSL probe"
-
-          # 3. Verify macOS hardware call path probes AppleSmartBattery / pmset
-          src_mac = inspect.getsource(bms_engine.get_macos_battery_telemetry)
-          assert "AppleSmartBattery" in src_mac or "pmset" in src_mac, "macOS driver missing ACPI probe"
-
-          print("Anti-Mock Guard PASSED: all OS drivers probe real hardware ACPI interfaces.")
+        run: python tests/test_antimock.py
 
       # ── 6. Guard C: Arithmetic Unit Tests ─────────────────────────────────
       - name: "Guard C: Arithmetic — unit tests (persist=False, no hardware)"
