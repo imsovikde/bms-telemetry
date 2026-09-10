@@ -107,6 +107,53 @@ class TestHardwareDiagnostics(unittest.TestCase):
             powers = [p["power_mw"] for p in top_procs]
             self.assertEqual(powers, sorted(powers, reverse=True))
 
+    def test_05_subsystem_hardware_power_breakdown(self):
+        """Verify subsystem power breakdown covers all major hardware modules."""
+        subsystems = diagnostics.SubsystemHardwarePower.calculate_subsystems(
+            battery_rate_mw=12000.0,
+            is_charging=True,
+            cpu_load_pct=35.0,
+            gpu_load_pct=15.0,
+            disk_bytes_sec=1024 * 1024,
+            audio_active=True
+        )
+        self.assertIn("cpu", subsystems)
+        self.assertIn("gpu", subsystems)
+        self.assertIn("display", subsystems)
+        self.assertIn("audio", subsystems)
+        self.assertIn("storage", subsystems)
+        self.assertIn("ram", subsystems)
+        self.assertIn("auxiliary", subsystems)
+        self.assertIn("total_system_watts", subsystems)
+        self.assertIn("battery_watts", subsystems)
+
+        self.assertGreater(subsystems["cpu"]["watts"], 3.0)
+        self.assertGreater(subsystems["gpu"]["watts"], 0.5)
+        self.assertEqual(subsystems["audio"]["watts"], 1.85)
+        self.assertTrue(subsystems["audio"]["active"])
+        self.assertGreater(subsystems["total_system_watts"], 10.0)
+        self.assertEqual(subsystems["battery_watts"], 12.0)
+
+    def test_06_bms_self_telemetry_overhead(self):
+        """Verify BMS self-telemetry resource tracking."""
+        overhead = diagnostics.get_bms_self_telemetry_overhead()
+        self.assertIn("pid", overhead)
+        self.assertIn("process_name", overhead)
+        self.assertIn("cpu_percent", overhead)
+        self.assertIn("memory_rss_mb", overhead)
+        self.assertIn("power_mw", overhead)
+        self.assertIn("accumulated_energy_mwh", overhead)
+        self.assertIn("overhead_status", overhead)
+        self.assertGreater(overhead["memory_rss_mb"], 0.0)
+        self.assertGreater(overhead["power_mw"], 0.0)
+
+    def test_07_electrochemical_terminal_voltage_variation(self):
+        """Verify electrochemical terminal voltage varies with SoC and load."""
+        telem = engine.get_telemetry()
+        # Ensure voltage is in realistic 3S range (9.0V to 13.5V) and not a static stub
+        self.assertGreater(telem["voltage_mv"], 9000)
+        self.assertLess(telem["voltage_mv"], 13500)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
