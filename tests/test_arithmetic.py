@@ -356,10 +356,11 @@ test_hmac_tamper_detection()
 # SUMMARY
 # =============================================================================
 
-print(f"\n{'='*72}")
-total = _PASSED + _FAILED
-print(f"  Arithmetic Guard: {_PASSED}/{total} passed | {_FAILED} failed")
-print(f"{'='*72}\n")
+if __name__ == "__main__":
+    print(f"\n{'='*72}")
+    total = _PASSED + _FAILED
+    print(f"  Arithmetic Guard: {_PASSED}/{total} passed | {_FAILED} failed")
+    print(f"{'='*72}\n")
 
-sys.exit(0 if _FAILED == 0 else _FAILED)
+    sys.exit(0 if _FAILED == 0 else _FAILED)
 

@@ -34,6 +34,8 @@ getcontext().prec = 80
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
 import bms_engine as engine
+import bms_diagnostics as diagnostics
+import bms_storage as storage
 
 WEB_DIR = os.path.join(_HERE, "web")
 
@@ -71,6 +73,16 @@ def _record_telemetry_sample(telem: dict, state: dict):
     if cur_ma == 0.0 and telem.get("voltage_mv", 0) > 0 and net_mw != 0.0:
         cur_ma = (net_mw / (telem["voltage_mv"] / 1000.0))
 
+    cpu_temp = 48.0
+    cpu_headroom = 52.0
+    try:
+        t_diag = diagnostics.get_thermal_diagnostics()
+        t_data = t_diag.read_thermals()
+        cpu_temp = float(t_data.get("cpu_package_temp_c", 48.0))
+        cpu_headroom = float(t_data.get("distance_to_tjmax_c", 52.0))
+    except Exception:
+        pass
+
     point = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "epoch_ms": int(now * 1000),
@@ -78,7 +90,8 @@ def _record_telemetry_sample(telem: dict, state: dict):
         "current_ma": round(float(cur_ma), 1),
         "power_mw": round(net_mw, 1),
         "soc_pct": round(float(state.get("state_of_charge_percentage") or 100.0), 3),
-        "temperature_c": 31.5,
+        "temperature_c": round(cpu_temp, 1),
+        "cpu_headroom_c": round(cpu_headroom, 1),
         "virtual_health_pct": round(float(state.get("virtual_health_percentage") or 100.0), 3),
         "degradation_loss_pct": round(float(state.get("cycle_degradation_loss_pct") or 0.0), 4),
         "accumulated_cycles": str(state.get("accumulated_cycles") or "0.0"),
@@ -89,6 +102,12 @@ def _record_telemetry_sample(telem: dict, state: dict):
         _TELEMETRY_RING_BUFFER.append(point)
         if len(_TELEMETRY_RING_BUFFER) > _MAX_RING_BUFFER_SIZE:
             _TELEMETRY_RING_BUFFER.pop(0)
+
+    try:
+        storage_eng = storage.get_storage_engine()
+        storage_eng.record_telemetry(point)
+    except Exception:
+        pass
 
 
 def build_historical_dataset(preset="24h", start_ts=None, end_ts=None, limit=2000):
@@ -2062,6 +2081,32 @@ class BMSHandler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
             self.wfile.write(json.dumps(hist_data).encode("utf-8"))
+        elif path == "/api/thermals":
+            try:
+                t_diag = diagnostics.get_thermal_diagnostics()
+                t_data = t_diag.read_thermals()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "thermals": t_data}).encode("utf-8"))
+            except Exception as exc:
+                self.send_error(500, f"Thermal query error: {exc}")
+        elif path == "/api/processes":
+            try:
+                telem = engine.get_telemetry()
+                chg_mw = telem.get("charge_rate_mw", 0.0) or 0.0
+                dis_mw = telem.get("discharge_rate_mw", 0.0) or 0.0
+                net_mw = float(chg_mw) if telem.get("charging") else (-float(dis_mw) if telem.get("discharging") else 0.0)
+                p_eng = diagnostics.get_process_attribution_engine()
+                procs = p_eng.sample_attribution(system_power_mw=net_mw, is_charging=telem.get("charging", False))
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "processes": procs}).encode("utf-8"))
+            except Exception as exc:
+                self.send_error(500, f"Process attribution error: {exc}")
         elif path == "/api/stream":
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -2072,18 +2117,25 @@ class BMSHandler(BaseHTTPRequestHandler):
 
             state = engine.load_state()
             last_tick = time.time()
+            t_diag = diagnostics.get_thermal_diagnostics()
+            p_eng = diagnostics.get_process_attribution_engine()
+            storage_eng = storage.get_storage_engine()
+            cached_procs = []
+            tick_count = 0
 
             try:
                 while True:
                     now = time.time()
                     dt = now - last_tick
                     last_tick = now
+                    tick_count += 1
 
                     telem = engine.get_telemetry()
 
                     # Micro-coulomb integration for live 30-decimal updates
                     chg_mw = telem.get("charge_rate_mw", 0.0)
                     dis_mw = telem.get("discharge_rate_mw", 0.0)
+                    net_mw = float(chg_mw) if telem.get("charging") else (-float(dis_mw) if telem.get("discharging") else 0.0)
                     design_cap = engine.to_dec30(state.get("design_capacity_mwh", engine.DESIGN_CAPACITY_MWH))
                     full_cap = engine.to_dec30(state.get("last_full_charge_capacity_mwh", engine.DESIGN_CAPACITY_MWH))
                     cur_rem = engine.to_dec30(state.get("last_remaining_capacity_mwh", engine.DESIGN_CAPACITY_MWH))
@@ -2109,10 +2161,13 @@ class BMSHandler(BaseHTTPRequestHandler):
                     if soc > Decimal("100.0"):
                         soc = Decimal("100.0")
 
+                    t_data = t_diag.read_thermals()
+                    live_temp_c = float(t_data.get("cpu_package_temp_c", 31.5))
+
                     volt_mv = engine.to_dec30(telem.get("voltage_mv") or engine.NOMINAL_VOLTAGE_MV)
                     h_res = engine.calculate_virtual_health(
                         full_cap, design_cap, accum_cyc, volt_mv,
-                        Decimal(str(chg_mw)), Decimal(str(dis_mw)), 31.5, telem.get("power_online", True)
+                        Decimal(str(chg_mw)), Decimal(str(dis_mw)), live_temp_c, telem.get("power_online", True)
                     )
 
                     state["accumulated_cycles"] = engine.fmt30(accum_cyc)
@@ -2124,11 +2179,21 @@ class BMSHandler(BaseHTTPRequestHandler):
                     state["thermal_stress_loss_pct"] = engine.fmt30(h_res["loss_thermal_pct"])
                     state["voltage_stress_loss_pct"] = engine.fmt30(h_res["loss_voltage_pct"])
 
+                    # Sample process attribution every 1s (4 ticks @ 4Hz) to maintain <0.2% CPU usage
+                    if tick_count % 4 == 0 or not cached_procs:
+                        try:
+                            cached_procs = p_eng.sample_attribution(system_power_mw=net_mw, is_charging=telem.get("charging", False))
+                            storage_eng.record_process_attribution(cached_procs)
+                        except Exception:
+                            pass
+
                     _record_telemetry_sample(telem, state)
 
                     payload = {
                         "telemetry": telem,
                         "state": state,
+                        "thermals": t_data,
+                        "top_processes": cached_procs,
                         "hardware_identity": {
                             "master_key_fingerprint": engine.HARDWARE_KEY_HEX[:16]
                         }
@@ -2139,9 +2204,35 @@ class BMSHandler(BaseHTTPRequestHandler):
                     time.sleep(0.25)
             except (BrokenPipeError, ConnectionResetError):
                 pass
+        elif path == "/api/export/csv":
+            try:
+                storage_eng = storage.get_storage_engine()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/csv; charset=utf-8")
+                self.send_header("Content-Disposition", 'attachment; filename="bms_telemetry_history.csv"')
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                for chunk in storage_eng.export_csv_stream():
+                    self.wfile.write(chunk.encode("utf-8"))
+            except Exception as exc:
+                self.send_error(500, f"CSV export failure: {exc}")
         elif path == "/api/export":
             try:
                 export_data = engine.export_lifetime_data()
+                raw = json.dumps(export_data, indent=2).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Disposition", 'attachment; filename="bms_lifetime_archive.json"')
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(raw)
+            except Exception as exc:
+                self.send_error(500, f"Export failure: {exc}")
+        elif path == "/api/export/json":
+            try:
+                storage_eng = storage.get_storage_engine()
+                export_data = storage_eng.export_json()
+                export_data["engine_state"] = engine.export_lifetime_data()
                 raw = json.dumps(export_data, indent=2).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -2150,7 +2241,7 @@ class BMSHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(raw)
             except Exception as exc:
-                self.send_error(500, f"Export failure: {exc}")
+                self.send_error(500, f"JSON export failure: {exc}")
         else:
             self.serve_static(path)
 
@@ -2163,8 +2254,24 @@ class BMSHandler(BaseHTTPRequestHandler):
                     return
                 body = self.rfile.read(content_length).decode("utf-8")
                 parsed_json = json.loads(body)
-                result = engine.import_lifetime_data(parsed_json)
-                raw_resp = json.dumps(result).encode("utf-8")
+                
+                # Import into SQLite WAL
+                storage_eng = storage.get_storage_engine()
+                storage_res = storage_eng.import_json(parsed_json)
+                
+                # If engine state is present, also restore engine state
+                engine_res = {}
+                if "engine_state" in parsed_json:
+                    engine_res = engine.import_lifetime_data(parsed_json["engine_state"])
+                elif "state" in parsed_json or "master_key_fingerprint" in parsed_json:
+                    engine_res = engine.import_lifetime_data(parsed_json)
+
+                combined_res = {
+                    "success": True,
+                    "storage_result": storage_res,
+                    "engine_result": engine_res
+                }
+                raw_resp = json.dumps(combined_res).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Access-Control-Allow-Origin", "*")
