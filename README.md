@@ -88,6 +88,7 @@ Once installed, **`bms` is immediately available from any working directory (`C:
 | **Virtual Health (SoH%)** | Multi-factor degradation equation: SEI layer power-law decay ($N^{0.82}$), Arrhenius thermal kinetics ($E_a/R=3788\text{ K}$), and float overpotential stress. |
 | **Zero-Data-Loss Persistence**| Cryptographically sealed with HMAC-SHA256 keyed to immutable silicon identifiers (Motherboard UUID, Baseboard Serial, Battery Serial). Mirrored across 7 independent tiers including secondary physical NVMe partitions (`D:\`, `S:\`). Survives complete OS/drive `C:\` erasure. |
 | **Untruncated Lifetime Archive** | Complete historical ledger without truncation or pruning (`bms export` / `bms import` and Web UI buttons), ensuring 100% of charging events and S5 offline charge logs remain permanently intact, portable, and restorable across all 7 hardware tiers. |
+| **Hardware Cell Gating** | Zero phantom cycle accumulation: cycle accumulation strictly halts whenever the battery is 100% full, discharging, or idle. Cycles ONLY increment when physical energy is genuinely flowing into the electrochemical cells ($Q_{\text{rem}} < Q_{\text{full}}$ and $P_{\text{charge}} > 0$). |
 | **Resource Overhead** | Ultra-lightweight background daemon (`<0.01%` CPU utilization, `~14 MB` RAM footprint, 60-second tickless interval). |
 | **Automated Verification** | 21-test arithmetic suite (`tests/test_arithmetic.py`) and 100-cycle stress harness (`bms test-100`) executing in `<0.2` seconds. |
 

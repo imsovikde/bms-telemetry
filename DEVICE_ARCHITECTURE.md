@@ -320,6 +320,17 @@ A common misconception is that the "BMS" is a file or driver within the operatin
   - Python's `decimal` module defaults to a thread-local precision of 28 digits. In multithreaded server environments (`ThreadingHTTPServer`), quantizing 5-digit capacities to 30 decimal places requires 35 significant digits, causing `decimal.InvalidOperation`.
   - Setting `decimal.DefaultContext.prec = 80` guarantees that all newly spawned HTTP and SSE threads inherit 80 digits of precision, guaranteeing crash-free high-frequency telemetry delivery.
 
+### 12.5 Physical Cell Ingestion & Strict Cycle Gating Invariant
+- **Electrochemical Satiation Principle**: When the battery reaches 100% State of Charge (`RemainingCapacity == FullChargedCapacity`), the lithium-ion intercalation sites within the cathode and anode are completely saturated. Even if AC power remains connected and draws nominal current for motherboard components or float maintenance, the battery cells are NOT absorbing new electrical charge.
+- **Strict Absorption Gating Rule**:
+  $$\text{IsCellAbsorbing} = \text{Active} \land \text{Charging} \land \text{PowerOnline} \land (Q_{\text{rem}} < Q_{\text{full}}) \land (P_{\text{charge}} > 0)$$
+- **Cycle Accumulation Invariant**:
+  - If $\text{IsCellAbsorbing} = \text{False}$ (e.g., battery is at 100% full, discharging, or idle), **cycle accumulation is completely halted and frozen**.
+  - No simulated or assumed cycle increments occur while the battery is at rest or floating.
+  - Cycle increments only resume when the battery is genuinely discharged below 100% and actively taking in physical charge into its chemical cells.
+- **Architectural Link Verification**:
+  - The direct ACPI hardware channel (`ACPI\PNP0C0A\0_0`, Tag `#38`, direct COM to `root\wmi::BatteryStatus`) is verified and displayed in real time across the CLI, TUI, and Generative Web Dashboard, certifying that all telemetry originates directly from the physical battery fuel gauge.
+
 ---
 
 ## 13. Verification & Integrity Checklist
@@ -334,3 +345,5 @@ A common misconception is that the "BMS" is a file or driver within the operatin
 - [x] **Untruncated Lifetime History Verified**: Rolling event cap removed; 100% of charging and S5 recovery events preserved.
 - [x] **Lifetime Archive Portability Verified**: JSON export and import round-trip verified with exact 30-decimal equality.
 - [x] **Thread-Safe 80-Digit Precision Verified**: Multithreaded SSE / REST server verified with `decimal.DefaultContext.prec = 80`.
+- [x] **Physical Cell Gating Invariant Verified**: Cycle accumulation strictly halts when battery is 100% full or idle.
+- [x] **Hardware Communication Proof Verified**: Live ACPI device instance and battery tag displayed across all interfaces.

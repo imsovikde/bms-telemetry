@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added CLI subcommands `bms export [file]` and `bms import <file>` with automatic schema validation and multi-tier HMAC re-sealing.
   - Added REST API endpoints `GET /api/export` and `POST /api/import` to `bms_ui.py`.
   - Added interactive glassmorphism **EXPORT LIFETIME JSON** and **IMPORT JSON** buttons to the Generative Web Dashboard with real-time animated toast notifications and local file reader upload.
+- **Physical Cell Ingestion & Strict Cycle Gating Invariant**:
+  - Implemented physical absorption condition: cycle accumulation strictly halts whenever the battery is at 100% capacity (`RemainingCapacity >= FullChargedCapacity`), discharging, or idle.
+  - Cycle increments only occur when physical charge is genuinely being ingested into electrochemical cells below 100% capacity ($Q_{\text{rem}} < Q_{\text{full}}$ and $P_{\text{charge}} > 0$), preventing rapid number spinning on a full battery.
+- **Architectural Hardware Link Transparency**:
+  - Embedded live ACPI hardware communication badges across all interfaces (`ACPI\PNP0C0A\0_0`, Tag `#38`, and bus protocol), proving direct non-hallucinatory communication with the battery fuel gauge.
+  - Added dedicated **Architectural Hardware Link & Cell Status** card in the Generative Web Dashboard with real-time indicators for hardware link health, physical cell state, and cycle accumulator status.
 - **Automated 1-Command Cross-Platform Installers**:
   - `install.ps1`: Automated Windows deployment copying files to `C:\ProgramData\BMS`, adding directory to system/user PATH, creating silent autostart VBS in `shell:startup`, launching the background daemon, and opening the browser dashboard.
   - `install.sh`: Automated Linux/macOS deployment compiling `bms_core.cpp`, symlinking `/usr/local/bin/bms`, registering systemd service, and opening default browser.

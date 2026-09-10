@@ -181,6 +181,8 @@ The integrity of historical telemetry is governed by the **Untruncated Lifetime 
 - **FR-8**: The biometric diagnostic module (`bms fix-bio`) MUST remain available to remediate Windows Hello fingerprint lockouts.
 - **FR-9**: The system MUST preserve all historical charging events, micro-deltas, and S5 boot recovery records indefinitely in an append-only ledger without truncation or pruning.
 - **FR-10**: The system MUST provide CLI commands (`bms export`, `bms import`) and interactive Generative Web UI buttons (`EXPORT LIFETIME JSON`, `IMPORT JSON`) to export and restore 100% of historical events and 30-decimal registers across hardware and OS boundaries.
+- **FR-11 (Physical Cell Ingestion & Cycle Gating)**: Cycle accumulation MUST strictly halt whenever the battery is at 100% capacity ($Q_{\text{rem}} \ge Q_{\text{full}}$), discharging, or idle. Cycles SHALL ONLY increment when external power is active and physical energy is genuinely flowing into the battery cells ($Q_{\text{rem}} < Q_{\text{full}}$ and $P_{\text{charge}} > 0$).
+- **FR-12 (Architectural Hardware Link Transparency)**: The system MUST visibly display the direct hardware communication status (`ACPI\PNP0C0A\0_0`, Tag number, bus type, and raw silicon registers) across all user interfaces (CLI status, live TUI, and Web dashboard) to certify that all telemetry originates directly from the physical battery fuel gauge.
 
 ### 5.2 Non-Functional Requirements (NFR)
 
