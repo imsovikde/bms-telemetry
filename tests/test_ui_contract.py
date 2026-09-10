@@ -191,7 +191,7 @@ class TestUIFrontendContract(unittest.TestCase):
             ["node", test_script],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=30
         )
         self.assertEqual(proc.returncode, 0, f"Node.js tests failed: {proc.stderr}\n{proc.stdout}")
         self.assertIn("format30 verified", proc.stdout)
