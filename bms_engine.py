@@ -1043,6 +1043,8 @@ def process_telemetry_and_update_state(telem: dict, state: dict, persist: bool =
     state["thermal_stress_loss_pct"] = fmt30(health_res["loss_thermal_pct"])
     state["voltage_stress_loss_pct"] = fmt30(health_res["loss_voltage_pct"])
     state["last_power_online"] = telem["power_online"]
+    state["last_shutdown_capacity_mwh"] = fmt30(current_rem)
+    state["last_shutdown_timestamp"] = datetime.now(timezone.utc).isoformat()
 
     if persist:
         save_state(state)
@@ -1484,6 +1486,19 @@ def run_daemon_loop() -> None:
         signal.signal(signal.SIGTERM, _on_sigterm)
     except (OSError, ValueError):
         pass  # SIGTERM unavailable on Windows — atexit covers SCM stop
+
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            from ctypes import wintypes
+            _HandlerRoutine = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+            def _engine_win_ctrl_handler(dwCtrlType):
+                _flush_shutdown_state()
+                return False
+            _engine_ctrl_handler_ref = _HandlerRoutine(_engine_win_ctrl_handler)
+            ctypes.windll.kernel32.SetConsoleCtrlHandler(_engine_ctrl_handler_ref, True)
+        except Exception:
+            pass
 
     while True:
         try:
