@@ -1,117 +1,202 @@
 /**
- * BMS Layout & Cockpit Grid Architecture
- * Density dial 8: High data-density layout with 1px hairlines and structured hierarchy
+ * BMS Layout & Cockpit Architecture - Apple-Grade Minimalist / Shadcn Stage
+ * Mobile-first high-precision layout anchored to min-h-[100dvh]
+ * Zero horizontal overflow, zero visible scrollbars, zero em-dashes or en-dashes
  */
 
-body {
+html, body {
+  min-height: 100dvh;
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  min-height: 100vh;
-  padding: 20px;
-  background-image:
-    radial-gradient(ellipse at 15% 0%, rgba(0, 240, 255, 0.06), transparent 50%),
-    radial-gradient(ellipse at 85% 100%, rgba(16, 185, 129, 0.05), transparent 50%),
-    linear-gradient(180deg, rgba(8, 12, 20, 0.98), #080c14);
-  background-attachment: fixed;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   line-height: 1.5;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
 }
 
 .container {
-  max-width: 1440px;
+  max-width: 1360px;
+  min-height: 100dvh;
   margin: 0 auto;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-/* Header */
-header {
+/* 1. Sleek Navigation Top Bar */
+header.cockpit-topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 16px;
-  margin-bottom: 18px;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.title-group h1 {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pulse-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--safe);
-  box-shadow: 0 0 10px var(--safe);
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
-}
-
-.title-group p {
-  font-size: 11px;
-  color: var(--secondary-foreground);
-  margin-top: 3px;
-  font-family: var(--font-mono);
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* Cockpit Grid */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 16px;
-}
-
-.card {
+  padding: 12px 18px;
   background: var(--card);
-  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
-  position: relative;
-  overflow: visible;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.3), transparent);
-  pointer-events: none;
+.brand-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
+.brand-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--foreground);
+  color: var(--background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: -0.03em;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-subtitle {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 2. Hardware Glance Ribbon */
 .card-hw-banner {
-  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hw-left-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hw-right-group {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.hw-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hw-title-label {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 500;
+}
+
+.hw-value-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* 3. Hero Section: Primary Interactive Chart Stage */
+.hero-chart-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
-  padding: 12px 18px;
-  border-color: var(--border-strong);
+  gap: 14px;
 }
 
-/* 5-Card Bento KPI Strip */
+.chart-hero-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chart-title-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chart-hero-callout {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.chart-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Synchronized Multi-Track Sparklines */
+.sparklines-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* 4. Bento KPI Metrics Strip */
 .bento-kpi-strip {
-  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 14px;
@@ -119,28 +204,26 @@ header {
 
 .kpi-card {
   background: var(--card);
-  backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  position: relative;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  min-height: 124px;
 }
 
 .kpi-card:hover {
   border-color: var(--border-strong);
-  transform: translateY(-1px);
+  background: var(--card-hover);
 }
 
 .kpi-label {
-  font-size: 10px;
-  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
   color: var(--muted-foreground);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -148,18 +231,17 @@ header {
 }
 
 .kpi-num {
-  font-family: var(--font-mono);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
-  color: #fff;
+  color: var(--foreground);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
 .kpi-sub {
   font-size: 11px;
-  font-family: var(--font-mono);
-  color: var(--secondary-foreground);
+  color: var(--muted-foreground);
   margin-top: 8px;
   display: flex;
   align-items: center;
@@ -172,114 +254,32 @@ header {
   gap: 14px;
 }
 
+/* 5. 30-Decimal Precision Laboratory Deck */
 .card-registers {
-  grid-column: span 12;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 14px;
-  padding: 14px 16px;
 }
 
-.card-chart {
-  grid-column: span 12;
-  padding-bottom: 12px;
-}
-
-.sparklines-strip {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-
-.sparkline-card {
-  background: rgba(8, 12, 20, 0.6);
+/* 6. Dynamic Live Telemetry Activity Stream */
+.card-ledger {
+  background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 12px;
-}
-
-.sparkline-title {
-  font-size: 10px;
-  font-family: var(--font-mono);
-  color: var(--secondary-foreground);
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.sparkline-svg {
-  width: 100%;
-  height: 36px;
-  display: block;
-}
-
-/* S5 Offline Charge Audit Table */
-.card-audit {
-  grid-column: span 12;
-  overflow: hidden;
-}
-
-.audit-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.audit-title {
-  font-size: 12px;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.5px;
-}
-
-.audit-table-wrap {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.audit-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
-
-.audit-table th {
-  text-align: left;
-  padding: 8px 12px;
-  color: var(--muted-foreground);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.audit-table td {
-  padding: 9px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  color: var(--foreground);
-  font-variant-numeric: tabular-nums;
-}
-
-.audit-table tr:hover td {
-  background: rgba(0, 240, 255, 0.03);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 footer {
-  margin-top: 24px;
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
   text-align: center;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--muted-foreground);
-  font-family: var(--font-mono);
 }
 
+/* Mobile & Tablet Responsive Engine */
 @media (max-width: 1100px) {
   .bento-kpi-strip {
     grid-template-columns: repeat(2, 1fr);
@@ -287,13 +287,37 @@ footer {
   .card-registers {
     grid-template-columns: 1fr;
   }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 14px 16px;
+    gap: 16px;
+  }
+  header.cockpit-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .header-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .card-hw-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .hw-right-group {
+    gap: 16px;
+  }
+  .bento-kpi-strip {
+    grid-template-columns: 1fr;
+  }
   .sparklines-strip {
     grid-template-columns: 1fr;
   }
-}
-
-@media (max-width: 640px) {
-  .bento-kpi-strip {
-    grid-template-columns: 1fr;
+  .bms-btn {
+    min-height: 40px;
+    padding: 8px 14px;
   }
 }

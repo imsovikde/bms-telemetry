@@ -3,6 +3,7 @@
  * Features LTTB downsampling, Fritsch-Carlson monotonic cubic Bezier paths (zero retrograde loops),
  * pixel-density noise binning, multi-axis domains, non-overlapping Y-axis ticks,
  * interactive crosshair scrubbing, and requestAnimationFrame render pacing.
+ * Zero em-dashes or en-dashes
  */
 
 export class BmsVectorChart {
@@ -25,7 +26,7 @@ export class BmsVectorChart {
       { key: "power_mw", min: -35000, max: 40000, lineId: "line-power", areaId: "area-power", dotId: "dot-power", unit: "mW", label: "Active Power" },
       { key: "voltage_mv", min: 9000, max: 13500, lineId: "line-voltage", areaId: "area-voltage", dotId: "dot-voltage", unit: "mV", label: "Pack Voltage" },
       { key: "soc_pct", min: 0, max: 100, lineId: "line-soc", areaId: "area-soc", dotId: "dot-soc", unit: "%", label: "State of Charge" },
-      { key: "temperature_c", min: 15, max: 65, lineId: "line-temp", areaId: "area-temp", dotId: "dot-temp", unit: "°C", label: "Cell Temp" },
+      { key: "temperature_c", min: 15, max: 65, lineId: "line-temp", areaId: "area-temp", dotId: "dot-temp", unit: "deg C", label: "Cell Temp" },
       { key: "virtual_health_pct", min: 60, max: 100, lineId: "line-health", areaId: "area-health", dotId: "dot-health", unit: "%", label: "Virtual Health" }
     ];
 
@@ -53,11 +54,19 @@ export class BmsVectorChart {
         smoothSwitch.setAttribute("aria-checked", this.useSmoothCurves ? "true" : "false");
         this.requestRender();
       });
+      smoothSwitch.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          this.useSmoothCurves = !this.useSmoothCurves;
+          smoothSwitch.setAttribute("aria-checked", this.useSmoothCurves ? "true" : "false");
+          this.requestRender();
+        }
+      });
     }
 
     // Series toggle pills
     const pills = document.querySelectorAll(".series-pill");
-    pills.forEach(pill => {
+    pills.forEach((pill) => {
       pill.addEventListener("click", () => {
         const key = pill.dataset.series;
         if (key && this.visibleSeries[key] !== undefined) {
@@ -78,7 +87,7 @@ export class BmsVectorChart {
 
   setData(points) {
     if (!Array.isArray(points)) return;
-    this.dataset = points.filter(p => p && typeof p.epoch_ms === "number" && !isNaN(p.epoch_ms));
+    this.dataset = points.filter((p) => p && typeof p.epoch_ms === "number" && !isNaN(p.epoch_ms));
     this.requestRender();
   }
 
@@ -314,7 +323,7 @@ export class BmsVectorChart {
     const maxT = this.dataset[this.dataset.length - 1].epoch_ms;
     const rangeT = maxT - minT || 1;
 
-    // Reset Grid & Axes
+    // Reset Grid and Axes
     if (this.gridG) this.gridG.innerHTML = "";
     if (this.axesG) this.axesG.innerHTML = "";
 
@@ -334,7 +343,7 @@ export class BmsVectorChart {
         this.gridG.innerHTML += `<line class="grid-line" x1="${xVal}" y1="${padTop}" x2="${xVal}" y2="${bottomY}"/>`;
       }
 
-      let tLabel = tAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      let tLabel = tAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       if (rangeT > 86400000 * 2) {
         tLabel = `${tAt.getMonth() + 1}/${tAt.getDate()} ${tAt.getHours()}:00`;
       }
@@ -344,7 +353,7 @@ export class BmsVectorChart {
     }
 
     // Render Clean, Non-Overlapping Y-Axis Ticks for Active Channel
-    const activeCfg = this.seriesConfig.find(c => c.key === this.activeChannel) || this.seriesConfig[0];
+    const activeCfg = this.seriesConfig.find((c) => c.key === this.activeChannel) || this.seriesConfig[0];
     if (this.axesG && activeCfg) {
       for (let i = 0; i <= 4; i++) {
         const yVal = padTop + (plotH / 4) * i;
@@ -355,7 +364,7 @@ export class BmsVectorChart {
     }
 
     // Render each active metric series
-    this.seriesConfig.forEach(cfg => {
+    this.seriesConfig.forEach((cfg) => {
       const lineEl = document.getElementById(cfg.lineId);
       const areaEl = document.getElementById(cfg.areaId);
 
@@ -424,7 +433,7 @@ export class BmsVectorChart {
       { id: "mini-spark-soc", key: "soc_pct", min: 0, max: 100 }
     ];
 
-    rails.forEach(rail => {
+    rails.forEach((rail) => {
       const el = document.getElementById(rail.id);
       if (!el) return;
       const pts = [];
@@ -474,44 +483,42 @@ export class BmsVectorChart {
 
     this.scrubLine.setAttribute("x1", svgX.toFixed(1));
     this.scrubLine.setAttribute("x2", svgX.toFixed(1));
-    this.scrubLine.style.display = "block";
+    this.scrubLine.classList.remove("is-hidden");
 
     // Update Tooltip Card
     const dObj = new Date(pt.epoch_ms);
     const timeEl = document.getElementById("tt-time");
-    if (timeEl) timeEl.textContent = `${dObj.toISOString().replace('T', ' ').slice(0, 19)} UTC`;
+    if (timeEl) timeEl.textContent = `${dObj.toISOString().replace("T", " ").slice(0, 19)} UTC`;
 
     this.setTooltipRow("tt-val-power", pt.power_mw, "mW");
     this.setTooltipRow("tt-val-voltage", pt.voltage_mv, "mV");
     this.setTooltipRow("tt-val-soc", pt.soc_pct, "%");
-    this.setTooltipRow("tt-val-temp", pt.temperature_c, "°C");
+    this.setTooltipRow("tt-val-temp", pt.temperature_c, "deg C");
     this.setTooltipRow("tt-val-health", pt.virtual_health_pct, "%");
 
-    this.tooltip.style.display = "block";
+    this.tooltip.classList.remove("is-hidden");
     if (relX > 0.65) {
-      this.tooltip.style.right = "auto";
-      this.tooltip.style.left = "80px";
+      this.tooltip.classList.add("tooltip-flip-left");
     } else {
-      this.tooltip.style.left = "auto";
-      this.tooltip.style.right = "40px";
+      this.tooltip.classList.remove("tooltip-flip-left");
     }
 
     // Position indicator dots on curves
     const padTop = 25;
     const bottomY = 288;
     const plotH = bottomY - padTop;
-    this.seriesConfig.forEach(c => {
+    this.seriesConfig.forEach((c) => {
       const dot = document.getElementById(c.dotId);
       if (!dot) return;
       if (!this.visibleSeries[c.key]) {
-        dot.style.display = "none";
+        dot.classList.add("is-hidden");
         return;
       }
       const val = typeof pt[c.key] === "number" ? pt[c.key] : c.min;
       const ny = Math.max(0, Math.min(1, (val - c.min) / (c.max - c.min)));
       dot.setAttribute("cx", svgX.toFixed(1));
       dot.setAttribute("cy", (bottomY - ny * plotH).toFixed(1));
-      dot.style.display = "block";
+      dot.classList.remove("is-hidden");
     });
   }
 
@@ -523,11 +530,11 @@ export class BmsVectorChart {
   }
 
   handleMouseLeave() {
-    if (this.scrubLine) this.scrubLine.style.display = "none";
-    if (this.tooltip) this.tooltip.style.display = "none";
-    this.seriesConfig.forEach(c => {
+    if (this.scrubLine) this.scrubLine.classList.add("is-hidden");
+    if (this.tooltip) this.tooltip.classList.add("is-hidden");
+    this.seriesConfig.forEach((c) => {
       const dot = document.getElementById(c.dotId);
-      if (dot) dot.style.display = "none";
+      if (dot) dot.classList.add("is-hidden");
     });
   }
 }

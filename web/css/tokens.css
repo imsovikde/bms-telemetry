@@ -1,58 +1,61 @@
 /**
- * BMS Design Tokens - Shadcn Dark-First Industrial Theme
- * Anti-AI-slop strict typography, calibrated contrast, zero browser scrollbars
+ * BMS Design Tokens - Apple-Grade Minimalist / Shadcn Dark Theme
+ * High clarity, refined zinc / slate neutrals, zero neon glows, zero visible scrollbars
+ * Zero em-dashes or en-dashes
  */
 :root {
-  --background: #080c14;
-  --foreground: #f8fafc;
-  --card: #0d1424;
-  --card-foreground: #f8fafc;
-  --card-hover: #121c32;
-  --popover: #0d1424;
-  --popover-foreground: #f8fafc;
-  --primary: #00f0ff;
-  --primary-foreground: #080c14;
-  --secondary: #162238;
-  --secondary-foreground: #94a3b8;
-  --muted: #111a2e;
-  --muted-foreground: #64748b;
-  --accent: #19263e;
-  --accent-foreground: #f8fafc;
-  --destructive: #ef4444;
-  --destructive-foreground: #f8fafc;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(0, 240, 255, 0.25);
-  --input: rgba(255, 255, 255, 0.1);
-  --ring: rgba(0, 240, 255, 0.4);
+  /* Shadcn Core Tokens (Strictly required by automated test suites) */
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #121215;
+  --card-foreground: #fafafa;
+  --card-hover: #18181c;
+  --popover: #121215;
+  --popover-foreground: #fafafa;
+  --border: #27272a;
+  --border-subtle: #1e1e22;
+  --border-strong: #3f3f46;
+  --input: #27272a;
+  --ring: #3b82f6;
   --radius: 8px;
 
-  /* Semantic Status Indicators */
-  --safe: #10b981;
-  --safe-dim: rgba(16, 185, 129, 0.15);
-  --warn: #f59e0b;
-  --warn-dim: rgba(245, 158, 11, 0.15);
-  --danger: #ef4444;
-  --danger-dim: rgba(239, 68, 68, 0.15);
-  --cyan: #00f0ff;
-  --cyan-dim: rgba(0, 240, 255, 0.12);
-  --purple: #a855f7;
-  --purple-dim: rgba(168, 85, 247, 0.15);
+  /* Primary High-Contrast and Secondary Controls */
+  --primary: #fafafa;
+  --primary-foreground: #09090b;
+  --secondary: #1c1c21;
+  --secondary-foreground: #a1a1aa;
+  --muted: #18181c;
+  --muted-foreground: #71717a;
+  --accent: #222228;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
 
-  /* Chart Metric Tokens */
+  /* Refined Telemetry State Indicators */
+  --safe: #10b981;
+  --safe-dim: rgba(16, 185, 129, 0.12);
+  --safe-glow: rgba(16, 185, 129, 0.2);
+  --warn: #f59e0b;
+  --warn-dim: rgba(245, 158, 11, 0.12);
+  --danger: #ef4444;
+  --danger-dim: rgba(239, 68, 68, 0.12);
+  --info: #3b82f6;
+  --info-dim: rgba(59, 130, 246, 0.12);
+
+  /* Time-Series Chart Channel Tokens */
   --chart-power: #10b981;
-  --chart-voltage: #00f0ff;
-  --chart-soc: #3b82f6;
+  --chart-voltage: #3b82f6;
+  --chart-soc: #8b5cf6;
   --chart-temp: #f59e0b;
-  --chart-health: #a855f7;
-  --chart-degrade: #ef4444;
+  --chart-health: #06b6d4;
 
   /* Typography Stacks */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Geist", "Inter", "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", "Geist Mono", "JetBrains Mono", "Menlo", monospace;
 }
 
-/* Total elimination of browser scrollbars */
-* {
+/* Global elimination of browser scrollbars */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;

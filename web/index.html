@@ -3,38 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BMS Telemetry & Hardware Cycle Engine</title>
+  <title>BMS Telemetry and Hardware Cycle Engine</title>
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
 </head>
 <body>
 <div class="container">
-  <!-- Header -->
-  <header>
-    <div class="title-group">
-      <h1><div class="pulse-dot"></div> INFINIX ZERO BOOK 13 BMS TELEMETRY</h1>
-      <p>EM_IDL822_V2.0 / Raptor Lake-P · ACPI \_SB.PC00.LPCB.H_EC.BAT0 · Intel 600 Series PCH</p>
+  <!-- 1. Sleek Navigation Top Bar -->
+  <header class="cockpit-topbar">
+    <div class="brand-group">
+      <div class="brand-icon">B</div>
+      <div class="brand-text">
+        <span class="brand-title">
+          BMS Telemetry
+          <span id="status-badge" class="badge-chip badge-idle">CONNECTING...</span>
+        </span>
+        <span class="brand-subtitle">Infinix Zero Book 13 / Raptor Lake-P / Intel 600 Series PCH</span>
+      </div>
     </div>
 
-    <div class="header-actions">
-      <!-- Custom Channel Combobox -->
+    <div class="header-controls">
+      <!-- Custom Accessible Channel Combobox -->
       <div class="bms-combobox" id="channel-combobox">
-        <button class="combobox-trigger" aria-haspopup="listbox">
+        <button type="button" class="combobox-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Select Telemetry Metric Channel">
           <span id="combobox-selected-label">Metric: Active Power (mW)</span>
           <svg class="combobox-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </button>
-        <div class="combobox-menu">
-          <input type="text" class="combobox-search-input" placeholder="Filter channels..." />
+        <div class="combobox-menu" role="listbox">
+          <input type="text" class="combobox-search-input" placeholder="Filter channels..." aria-label="Filter channels" />
           <div class="combobox-options-list"></div>
         </div>
       </div>
 
-      <!-- Custom Date-Range Calendar Popover -->
+      <!-- Custom Accessible Date-Range Calendar Popover -->
       <div class="bms-calendar-popover" id="date-popover">
-        <button class="bms-btn" title="Select time range preset or custom dates">
+        <button type="button" class="bms-btn" title="Select time range preset or custom dates" aria-haspopup="dialog" aria-expanded="false" aria-label="Select Date Range">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
             <line x1="16" y1="2" x2="16" y2="6"/>
@@ -43,20 +49,20 @@
           </svg>
           <span id="active-range-label">Range: Past 24 Hours</span>
         </button>
-        <div class="calendar-panel">
+        <div class="calendar-panel" role="dialog" aria-label="Date Range Picker">
           <div class="preset-row">
-            <div class="preset-pill" data-preset="5m">Live 5m</div>
-            <div class="preset-pill" data-preset="1h">1h</div>
-            <div class="preset-pill active" data-preset="24h">24h</div>
-            <div class="preset-pill" data-preset="7d">7d</div>
-            <div class="preset-pill" data-preset="30d">30d</div>
-            <div class="preset-pill" data-preset="ytd">YTD</div>
-            <div class="preset-pill" data-preset="lifetime">Lifetime Archive</div>
+            <button type="button" class="preset-pill" data-preset="5m">Live 5m</button>
+            <button type="button" class="preset-pill" data-preset="1h">1h</button>
+            <button type="button" class="preset-pill active" data-preset="24h">24h</button>
+            <button type="button" class="preset-pill" data-preset="7d">7d</button>
+            <button type="button" class="preset-pill" data-preset="30d">30d</button>
+            <button type="button" class="preset-pill" data-preset="ytd">YTD</button>
+            <button type="button" class="preset-pill" data-preset="lifetime">Lifetime Archive</button>
           </div>
           <div class="cal-nav">
-            <button class="cal-nav-btn" id="cal-prev-btn">‹</button>
+            <button type="button" class="cal-nav-btn" id="cal-prev-btn" aria-label="Previous Month">&lsaquo;</button>
             <span class="cal-month-title" id="cal-month-title">September 2026</span>
-            <button class="cal-nav-btn" id="cal-next-btn">›</button>
+            <button type="button" class="cal-nav-btn" id="cal-next-btn" aria-label="Next Month">&rsaquo;</button>
           </div>
           <div class="cal-weekdays">
             <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
@@ -65,8 +71,8 @@
         </div>
       </div>
 
-      <!-- Export / Import Buttons -->
-      <button class="bms-btn bms-btn-primary" id="btn-export" title="Export complete untruncated lifetime history JSON">
+      <!-- Export / Import Operations -->
+      <button type="button" class="bms-btn bms-btn-primary" id="btn-export" title="Export complete untruncated lifetime history JSON">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
@@ -75,7 +81,7 @@
         EXPORT JSON
       </button>
 
-      <button class="bms-btn bms-btn-safe" id="btn-import" title="Import and restore lifetime telemetry archive">
+      <button type="button" class="bms-btn bms-btn-safe" id="btn-import" title="Import and restore lifetime telemetry archive">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="17 8 12 3 7 8"/>
@@ -83,348 +89,320 @@
         </svg>
         IMPORT JSON
       </button>
-      <input type="file" id="import-file-input" accept=".json" style="display:none;" />
-
-      <!-- Live Stream Status Badge -->
-      <div id="status-badge" class="badge-chip badge-idle">CONNECTING...</div>
+      <input type="file" id="import-file-input" accept=".json" class="visually-hidden" aria-label="Upload BMS Archive JSON" />
     </div>
   </header>
 
-  <div class="grid">
-    <!-- Hardware Link & Physical Cell Absorption Status Banner -->
-    <div class="card card-hw-banner">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <div id="hw-pulse-dot" style="width:8px; height:8px; border-radius:50%; background:var(--safe); box-shadow:0 0 10px var(--safe);"></div>
-        <div>
-          <div style="font-size:10px; font-family:var(--font-mono); color:var(--muted-foreground); text-transform:uppercase; letter-spacing:0.8px;">Architectural Hardware Link</div>
-          <div id="hw-comm-name" style="font-size:12px; font-weight:700; font-family:var(--font-mono); color:#fff;">DIRECT ACPI BUS: \_SB.PC00.LPCB.H_EC.BAT0 · Tag #<span id="hw-tag">38</span></div>
-        </div>
-      </div>
-
-      <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
-        <div>
-          <div style="font-size:10px; font-family:var(--font-mono); color:var(--muted-foreground); text-transform:uppercase; letter-spacing:0.8px;">Physical Cell Absorption</div>
-          <div id="hw-cell-status" style="font-size:12px; font-weight:700; font-family:var(--font-mono); color:var(--safe);">FULLY CHARGED (100.0%)</div>
-        </div>
-        <div>
-          <div style="font-size:10px; font-family:var(--font-mono); color:var(--muted-foreground); text-transform:uppercase; letter-spacing:0.8px;">Coulomb Accumulator</div>
-          <div id="hw-cycle-acc-state" class="badge-chip badge-idle" style="font-size:10px; padding: 2px 8px;">FROZEN / STOPPED</div>
-        </div>
-        <div>
-          <div style="font-size:10px; font-family:var(--font-mono); color:var(--muted-foreground); text-transform:uppercase; letter-spacing:0.8px;">Silicon Chemistry</div>
-          <div id="hw-chem" style="font-size:12px; font-weight:700; font-family:var(--font-mono); color:var(--cyan);">LION · 3S 11.55V Nominal</div>
-        </div>
+  <!-- 2. Hardware Glance Ribbon -->
+  <div class="card-hw-banner">
+    <div class="hw-left-group">
+      <span id="hw-pulse-dot" class="pulse-dot pulse-dot-safe"></span>
+      <div class="hw-info-col">
+        <span class="hw-title-label">Architectural Hardware Link</span>
+        <span id="hw-comm-name" class="hw-value-text">DIRECT ACPI BUS: \_SB.PC00.LPCB.H_EC.BAT0 / Tag #<span id="hw-tag" class="hw-tag-badge">38</span></span>
       </div>
     </div>
 
-    <!-- 5-Card Bento KPI Cockpit Strip -->
-    <div class="bento-kpi-strip">
-      <!-- KPI 1: State of Charge -->
-      <div class="kpi-card">
-        <div class="kpi-label">
-          <span>State of Charge</span>
-          <span class="badge-chip badge-charging" id="kpi-soc-badge" style="font-size:9px; padding:1px 6px;">LIVE</span>
-        </div>
-        <div class="card-gauge-kpi">
-          <svg class="gauge-svg-mini" viewBox="0 0 200 200">
-            <defs>
-              <linearGradient id="gauge-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#00f0ff"/>
-                <stop offset="100%" stop-color="#10b981"/>
-              </linearGradient>
-            </defs>
-            <circle class="gauge-bg" cx="100" cy="100" r="85"/>
-            <circle id="gauge-fill" class="gauge-fill" cx="100" cy="100" r="85"/>
-            <text id="gauge-pct" class="gauge-text" x="100" y="110" text-anchor="middle">--.-%</text>
-          </svg>
-          <div>
-            <div style="font-size:10px; color:var(--muted-foreground); text-transform:uppercase;">Pack Capacity</div>
-            <div style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:#fff; margin-top:2px;">
-              <span id="mwh-rem">--</span> mWh
-            </div>
-            <div style="font-family:var(--font-mono); font-size:10px; color:var(--secondary-foreground);">
-              of <span id="mwh-fcc">--</span> mWh FCC
-            </div>
-          </div>
-        </div>
-        <div class="kpi-sub">ACPI \_SB.BAT0 Chemistry Monitored</div>
+    <div class="hw-right-group">
+      <div class="hw-info-col">
+        <span class="hw-title-label">Physical Cell Absorption</span>
+        <span id="hw-cell-status" class="hw-value-text hw-value-safe">FULLY CHARGED (100.0%)</span>
       </div>
-
-      <!-- KPI 2: Active Power Flow -->
-      <div class="kpi-card">
-        <div class="kpi-label">
-          <span>Active Power Flow</span>
-          <span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">TELEMETRY</span>
-        </div>
-        <div id="stat-power" class="kpi-num" style="color:var(--safe);">-- mW</div>
-        <div class="kpi-sub" id="power-flow-sub">Charge / Discharge Dynamics</div>
+      <div class="hw-info-col">
+        <span class="hw-title-label">Coulomb Accumulator</span>
+        <span id="hw-cycle-acc-state" class="badge-chip badge-idle badge-xs">FROZEN / STOPPED</span>
       </div>
-
-      <!-- KPI 3: Accumulated Cycles -->
-      <div class="kpi-card">
-        <div class="kpi-label">
-          <span>Cycle Counter</span>
-          <span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">ZERO-DRIFT</span>
-        </div>
-        <div id="kpi-cycle-int" class="kpi-num" style="color:var(--cyan);">--</div>
-        <div class="kpi-sub">30-Decimal Coulomb Precision</div>
-      </div>
-
-      <!-- KPI 4: Virtual Health (SoH) -->
-      <div class="kpi-card">
-        <div class="kpi-label">
-          <span>Electrochemical Health</span>
-          <span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">SOH MODEL</span>
-        </div>
-        <div id="stat-vhealth" class="kpi-num" style="color:var(--safe);">--%</div>
-        <div class="kpi-sub">Scientific Degradation Model</div>
-      </div>
-
-      <!-- KPI 5: Pack Voltage & AC Mains -->
-      <div class="kpi-card">
-        <div class="kpi-label">
-          <span>Pack Voltage & Bus</span>
-          <span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">3S PACK</span>
-        </div>
-        <div id="stat-volt" class="kpi-num">-- V</div>
-        <div class="kpi-sub">
-          <span id="stat-mains">--</span> · <span id="stat-key">--</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Precision 30-Decimal Multi-Register Strip -->
-    <div class="card card-registers">
-      <div class="reg-block">
-        <div class="reg-label">
-          <span>Accumulated Charging Cycles (30-Decimal Coulomb Integration)</span>
-          <span style="color:var(--safe);">ZERO-DRIFT FIXED POINT</span>
-        </div>
-        <div id="cycles-30" class="reg-val-30">--</div>
-      </div>
-      <div class="reg-block">
-        <div class="reg-label">
-          <span>Real-Time State of Charge Percentage (30 Decimal Digits)</span>
-          <span style="color:var(--cyan);">CONTINUOUS SUB-SECOND INTEGRATION</span>
-        </div>
-        <div id="soc-30" class="reg-val-30">--</div>
-      </div>
-      <div class="reg-block">
-        <div class="reg-label">
-          <span>Electrochemical Virtual Health Percentage (30 Decimal Digits)</span>
-          <span style="color:var(--purple);">MULTI-FACTOR SCIENTIFIC MODEL</span>
-        </div>
-        <div id="vhealth-30" class="reg-val-30">--</div>
-      </div>
-    </div>
-
-    <!-- S5 Offline Charging & Hardware State Audit Ledger -->
-    <div class="card card-audit">
-      <div class="audit-header">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <div style="width:6px; height:6px; border-radius:50%; background:var(--cyan);"></div>
-          <span class="audit-title">S5 OFFLINE CHARGING & POWER-OFF STATE AUDIT LEDGER</span>
-        </div>
-        <span class="badge-chip badge-idle" style="font-size:10px; padding:2px 8px;">ZERO-LOSS REPLICAS INTACT</span>
-      </div>
-      <div class="audit-table-wrap">
-        <table class="audit-table">
-          <thead>
-            <tr>
-              <th>Timestamp (UTC)</th>
-              <th>Hardware Power State</th>
-              <th>Cell Capacity Transition</th>
-              <th>Energy Ingested</th>
-              <th>Delta Cycles</th>
-              <th>Audit Status</th>
-            </tr>
-          </thead>
-          <tbody id="s5-audit-tbody">
-            <tr>
-              <td>2026-09-10 05:28:00 UTC</td>
-              <td><span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">S5 (SHUTDOWN)</span></td>
-              <td>69,993 / 69,993 mWh (100.0%)</td>
-              <td>+0 mWh (Cells Saturated)</td>
-              <td>+0.000000 Cyc</td>
-              <td><span style="color:var(--safe); font-weight:600;">VERIFIED (HARDWARE INTACT)</span></td>
-            </tr>
-            <tr>
-              <td>2026-09-09 22:15:00 UTC</td>
-              <td><span class="badge-chip badge-charging" style="font-size:9px; padding:1px 6px;">S5 OFFLINE CHARGE</span></td>
-              <td>54,200 -&gt; 69,993 mWh (+22.5%)</td>
-              <td>+15,793 mWh Absorbed</td>
-              <td>+0.225637 Cyc</td>
-              <td><span style="color:var(--safe); font-weight:600;">RECONCILED VIA NVRAM</span></td>
-            </tr>
-            <tr>
-              <td>2026-09-08 18:40:00 UTC</td>
-              <td><span class="badge-chip badge-idle" style="font-size:9px; padding:1px 6px;">S0 (OPERATIONAL)</span></td>
-              <td>69,993 / 69,993 mWh (100.0%)</td>
-              <td>Active AC Mains Bypass</td>
-              <td>+0.000000 Cyc</td>
-              <td><span style="color:var(--cyan); font-weight:600;">HARDWARE-LOCKED</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Pure SVG Vector Chart Engine -->
-    <div class="card card-chart">
-      <div class="chart-header">
-        <div class="chart-title-area">
-          <span class="chart-title">LIFETIME TELEMETRY & TIME-SERIES VECTOR ENGINE</span>
-          <div class="series-toggles">
-            <div class="series-pill active" data-series="power_mw">
-              <span class="series-dot" style="background:var(--chart-power);"></span>Power
-            </div>
-            <div class="series-pill active" data-series="voltage_mv">
-              <span class="series-dot" style="background:var(--chart-voltage);"></span>Voltage
-            </div>
-            <div class="series-pill active" data-series="soc_pct">
-              <span class="series-dot" style="background:var(--chart-soc);"></span>SoC
-            </div>
-            <div class="series-pill" data-series="temperature_c">
-              <span class="series-dot" style="background:var(--chart-temp);"></span>Temp
-            </div>
-            <div class="series-pill" data-series="virtual_health_pct">
-              <span class="series-dot" style="background:var(--chart-health);"></span>Health
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex; align-items:center; gap:14px;">
-          <!-- Custom Spring Switch for Curve Smoothing -->
-          <div class="bms-switch-wrapper" id="smooth-switch-wrapper">
-            <div class="bms-switch" id="smooth-switch" role="switch" aria-checked="true" tabindex="0">
-              <div class="bms-switch-thumb"></div>
-            </div>
-            <span class="bms-switch-label">Bézier Spline</span>
-          </div>
-
-          <button class="bms-btn" id="reset-zoom-btn" style="padding: 4px 8px; font-size:10px;">RESET ZOOM</button>
-        </div>
-      </div>
-
-      <!-- Main SVG Chart Canvas -->
-      <div class="svg-chart-container" id="svg-chart-box" tabindex="0" role="region" aria-label="Interactive Telemetry Chart Canvas">
-        <svg id="chart-svg" viewBox="0 0 1000 320" preserveAspectRatio="none" role="img" aria-label="Vector Telemetry Curves">
-          <defs>
-            <linearGradient id="grad-power" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#10b981" stop-opacity="0.32"/>
-              <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
-            </linearGradient>
-            <linearGradient id="grad-voltage" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.32"/>
-              <stop offset="100%" stop-color="#00f0ff" stop-opacity="0"/>
-            </linearGradient>
-            <linearGradient id="grad-soc" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.32"/>
-              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
-            </linearGradient>
-            <linearGradient id="grad-temp" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.32"/>
-              <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
-            </linearGradient>
-            <linearGradient id="grad-health" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#a855f7" stop-opacity="0.32"/>
-              <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-
-          <!-- Grid Background Lines -->
-          <g id="chart-grid"></g>
-
-          <!-- Metric Area Fills -->
-          <path id="area-power" class="chart-area" fill="url(#grad-power)" d=""></path>
-          <path id="area-voltage" class="chart-area" fill="url(#grad-voltage)" d=""></path>
-          <path id="area-soc" class="chart-area" fill="url(#grad-soc)" d=""></path>
-          <path id="area-temp" class="chart-area" fill="url(#grad-temp)" d=""></path>
-          <path id="area-health" class="chart-area" fill="url(#grad-health)" d=""></path>
-
-          <!-- Metric Stroke Lines -->
-          <path id="line-power" class="chart-line" stroke="var(--chart-power)" d=""></path>
-          <path id="line-voltage" class="chart-line" stroke="var(--chart-voltage)" d=""></path>
-          <path id="line-soc" class="chart-line" stroke="var(--chart-soc)" d=""></path>
-          <path id="line-temp" class="chart-line" stroke="var(--chart-temp)" d=""></path>
-          <path id="line-health" class="chart-line" stroke="var(--chart-health)" d=""></path>
-
-          <!-- Axis Labels & Ticks -->
-          <g id="chart-axes"></g>
-
-          <!-- Crosshair Scrub Line & Marker Dots -->
-          <line id="scrub-line-x" class="scrub-line" x1="0" y1="20" x2="0" y2="290" style="display:none;"></line>
-          <circle id="dot-power" class="scrub-dot" r="4" fill="var(--chart-power)" cx="0" cy="0" style="display:none;"></circle>
-          <circle id="dot-voltage" class="scrub-dot" r="4" fill="var(--chart-voltage)" cx="0" cy="0" style="display:none;"></circle>
-          <circle id="dot-soc" class="scrub-dot" r="4" fill="var(--chart-soc)" cx="0" cy="0" style="display:none;"></circle>
-          <circle id="dot-temp" class="scrub-dot" r="4" fill="var(--chart-temp)" cx="0" cy="0" style="display:none;"></circle>
-          <circle id="dot-health" class="scrub-dot" r="4" fill="var(--chart-health)" cx="0" cy="0" style="display:none;"></circle>
-        </svg>
-
-        <!-- Floating Tooltip Card -->
-        <div class="chart-tooltip" id="chart-tooltip" style="display:none;">
-          <div class="tooltip-time" id="tt-time">--:--:-- UTC</div>
-          <div class="tooltip-metric-row">
-            <span class="tooltip-metric-name"><span style="color:var(--chart-power)">●</span> Power</span>
-            <span class="tooltip-metric-val" id="tt-val-power">-- mW</span>
-          </div>
-          <div class="tooltip-metric-row">
-            <span class="tooltip-metric-name"><span style="color:var(--chart-voltage)">●</span> Voltage</span>
-            <span class="tooltip-metric-val" id="tt-val-voltage">-- mV</span>
-          </div>
-          <div class="tooltip-metric-row">
-            <span class="tooltip-metric-name"><span style="color:var(--chart-soc)">●</span> SoC</span>
-            <span class="tooltip-metric-val" id="tt-val-soc">--%</span>
-          </div>
-          <div class="tooltip-metric-row">
-            <span class="tooltip-metric-name"><span style="color:var(--chart-temp)">●</span> Temp</span>
-            <span class="tooltip-metric-val" id="tt-val-temp">--°C</span>
-          </div>
-          <div class="tooltip-metric-row">
-            <span class="tooltip-metric-name"><span style="color:var(--chart-health)">●</span> Health</span>
-            <span class="tooltip-metric-val" id="tt-val-health">--%</span>
-          </div>
-        </div>
-      <!-- Synchronized Multi-Track Sparkline Rails -->
-      <div class="sparklines-strip">
-        <div class="sparkline-card">
-          <div class="sparkline-title">
-            <span style="color:var(--chart-power);">●</span> Active Power (mW)
-          </div>
-          <svg viewBox="0 0 300 36" preserveAspectRatio="none" class="sparkline-svg">
-            <path id="mini-spark-power" stroke="var(--chart-power)" fill="none" stroke-width="1.5" d=""></path>
-          </svg>
-        </div>
-        <div class="sparkline-card">
-          <div class="sparkline-title">
-            <span style="color:var(--chart-voltage);">●</span> Pack Voltage (mV)
-          </div>
-          <svg viewBox="0 0 300 36" preserveAspectRatio="none" class="sparkline-svg">
-            <path id="mini-spark-voltage" stroke="var(--chart-voltage)" fill="none" stroke-width="1.5" d=""></path>
-          </svg>
-        </div>
-        <div class="sparkline-card">
-          <div class="sparkline-title">
-            <span style="color:var(--chart-soc);">●</span> State of Charge (%)
-          </div>
-          <svg viewBox="0 0 300 36" preserveAspectRatio="none" class="sparkline-svg">
-            <path id="mini-spark-soc" stroke="var(--chart-soc)" fill="none" stroke-width="1.5" d=""></path>
-          </svg>
-        </div>
-      </div>
-
-      <!-- Mini-Map / Brush Preview Bar -->
-      <div class="mini-map-container">
-        <svg id="mini-svg" viewBox="0 0 1000 36" preserveAspectRatio="none">
-          <path id="mini-path" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1" d=""></path>
-          <rect id="mini-brush" x="0" y="0" width="1000" height="36" fill="rgba(0, 240, 255, 0.12)" stroke="var(--primary)" stroke-width="1"></rect>
-        </svg>
+      <div class="hw-info-col">
+        <span class="hw-title-label">Silicon Chemistry</span>
+        <span id="hw-chem" class="hw-value-text hw-value-info">LION / 3S 11.55V Nominal</span>
       </div>
     </div>
   </div>
 
+  <!-- 3. Primary Hero Section: Interactive Shadcn Telemetry Chart Stage -->
+  <section class="hero-chart-section">
+    <div class="chart-header">
+      <div class="chart-hero-metric">
+        <span class="chart-title-label">Telemetry Analytics</span>
+        <div class="chart-hero-callout">
+          <span id="chart-hero-val">Active Stream</span>
+        </div>
+      </div>
+
+      <div class="chart-toolbar">
+        <!-- Series Toggles (Shadcn Tabs Aesthetic) -->
+        <div class="series-toggles">
+          <button type="button" class="series-pill active" data-series="power_mw">
+            <span class="series-dot series-dot-power"></span>Power
+          </button>
+          <button type="button" class="series-pill active" data-series="voltage_mv">
+            <span class="series-dot series-dot-voltage"></span>Voltage
+          </button>
+          <button type="button" class="series-pill active" data-series="soc_pct">
+            <span class="series-dot series-dot-soc"></span>SoC
+          </button>
+          <button type="button" class="series-pill" data-series="temperature_c">
+            <span class="series-dot series-dot-temp"></span>Temp
+          </button>
+          <button type="button" class="series-pill" data-series="virtual_health_pct">
+            <span class="series-dot series-dot-health"></span>Health
+          </button>
+        </div>
+
+        <!-- Custom Spring Switch for Curve Smoothing -->
+        <div class="bms-switch-wrapper" id="smooth-switch-wrapper">
+          <div class="bms-switch" id="smooth-switch" role="switch" aria-checked="true" tabindex="0" aria-label="Toggle Bezier Spline Curves">
+            <div class="bms-switch-thumb"></div>
+          </div>
+          <span class="bms-switch-label">Spline</span>
+        </div>
+
+        <button type="button" class="bms-btn bms-btn-sm" id="reset-zoom-btn">RESET</button>
+      </div>
+    </div>
+
+    <!-- Main SVG Chart Canvas -->
+    <div class="svg-chart-container" id="svg-chart-box" tabindex="0" role="region" aria-label="Interactive Telemetry Chart Canvas">
+      <svg id="chart-svg" class="chart-svg" viewBox="0 0 1000 320" preserveAspectRatio="none" role="img" aria-label="Vector Telemetry Curves">
+        <defs>
+          <linearGradient id="grad-power" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#10b981" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="grad-voltage" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="grad-soc" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="grad-temp" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="grad-health" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+
+        <!-- Grid Background Lines -->
+        <g id="chart-grid"></g>
+
+        <!-- Metric Area Fills -->
+        <path id="area-power" class="chart-area" fill="url(#grad-power)" d=""></path>
+        <path id="area-voltage" class="chart-area" fill="url(#grad-voltage)" d=""></path>
+        <path id="area-soc" class="chart-area" fill="url(#grad-soc)" d=""></path>
+        <path id="area-temp" class="chart-area" fill="url(#grad-temp)" d=""></path>
+        <path id="area-health" class="chart-area" fill="url(#grad-health)" d=""></path>
+
+        <!-- Metric Stroke Lines -->
+        <path id="line-power" class="chart-line" stroke="var(--chart-power)" d=""></path>
+        <path id="line-voltage" class="chart-line" stroke="var(--chart-voltage)" d=""></path>
+        <path id="line-soc" class="chart-line" stroke="var(--chart-soc)" d=""></path>
+        <path id="line-temp" class="chart-line" stroke="var(--chart-temp)" d=""></path>
+        <path id="line-health" class="chart-line" stroke="var(--chart-health)" d=""></path>
+
+        <!-- Axis Labels and Ticks -->
+        <g id="chart-axes"></g>
+
+        <!-- Crosshair Scrub Line and Marker Dots -->
+        <line id="scrub-line-x" class="scrub-line is-hidden" x1="0" y1="20" x2="0" y2="290"></line>
+        <circle id="dot-power" class="scrub-dot is-hidden" r="4" fill="var(--chart-power)" cx="0" cy="0"></circle>
+        <circle id="dot-voltage" class="scrub-dot is-hidden" r="4" fill="var(--chart-voltage)" cx="0" cy="0"></circle>
+        <circle id="dot-soc" class="scrub-dot is-hidden" r="4" fill="var(--chart-soc)" cx="0" cy="0"></circle>
+        <circle id="dot-temp" class="scrub-dot is-hidden" r="4" fill="var(--chart-temp)" cx="0" cy="0"></circle>
+        <circle id="dot-health" class="scrub-dot is-hidden" r="4" fill="var(--chart-health)" cx="0" cy="0"></circle>
+      </svg>
+
+      <!-- Floating Tooltip Card -->
+      <div class="chart-tooltip is-hidden" id="chart-tooltip">
+        <div class="tooltip-time" id="tt-time">--:--:-- UTC</div>
+        <div class="tooltip-metric-row">
+          <span class="tooltip-metric-name"><span class="tooltip-dot series-dot-power"></span> Power</span>
+          <span class="tooltip-metric-val" id="tt-val-power">-- mW</span>
+        </div>
+        <div class="tooltip-metric-row">
+          <span class="tooltip-metric-name"><span class="tooltip-dot series-dot-voltage"></span> Voltage</span>
+          <span class="tooltip-metric-val" id="tt-val-voltage">-- mV</span>
+        </div>
+        <div class="tooltip-metric-row">
+          <span class="tooltip-metric-name"><span class="tooltip-dot series-dot-soc"></span> SoC</span>
+          <span class="tooltip-metric-val" id="tt-val-soc">--%</span>
+        </div>
+        <div class="tooltip-metric-row">
+          <span class="tooltip-metric-name"><span class="tooltip-dot series-dot-temp"></span> Temp</span>
+          <span class="tooltip-metric-val" id="tt-val-temp">-- deg C</span>
+        </div>
+        <div class="tooltip-metric-row">
+          <span class="tooltip-metric-name"><span class="tooltip-dot series-dot-health"></span> Health</span>
+          <span class="tooltip-metric-val" id="tt-val-health">--%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Synchronized Multi-Track Sparklines -->
+    <div class="sparklines-strip">
+      <div class="sparkline-card">
+        <div class="sparkline-title">
+          <span class="series-dot series-dot-power"></span> Active Power (mW)
+        </div>
+        <svg viewBox="0 0 300 36" preserveAspectRatio="none" class="sparkline-svg" role="img" aria-label="Power Sparkline">
+          <path id="mini-spark-power" stroke="var(--chart-power)" fill="none" stroke-width="1.5" d=""></path>
+        </svg>
+      </div>
+      <div class="sparkline-card">
+        <div class="sparkline-title">
+          <span class="series-dot series-dot-voltage"></span> Pack Voltage (mV)
+        </div>
+        <svg viewBox="0 0 300 36" preserveAspectRatio="none" class="sparkline-svg" role="img" aria-label="Voltage Sparkline">
+          <path id="mini-spark-voltage" stroke="var(--chart-voltage)" fill="none" stroke-width="1.5" d=""></path>
+        </svg>
+      </div>
+      <div class="sparkline-card">
+        <div class="sparkline-title">
+          <span class="series-dot series-dot-soc"></span> State of Charge (%)
+        </div>
+        <svg viewBox="0 0 300 36" preserveAspectRatio="none" class="sparkline-svg" role="img" aria-label="SoC Sparkline">
+          <path id="mini-spark-soc" stroke="var(--chart-soc)" fill="none" stroke-width="1.5" d=""></path>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Minimap Preview Bar -->
+    <div class="mini-map-container">
+      <svg id="mini-svg" class="mini-svg" viewBox="0 0 1000 36" preserveAspectRatio="none" role="img" aria-label="Overview Minimap">
+        <path id="mini-path" fill="none" stroke="var(--border-strong)" stroke-width="1" d=""></path>
+        <rect id="mini-brush" x="0" y="0" width="1000" height="36" fill="rgba(59, 130, 246, 0.08)" stroke="var(--border-strong)" stroke-width="1"></rect>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 4. Key Metrics Bento Grid -->
+  <section class="bento-kpi-strip">
+    <!-- Card 1: State of Charge -->
+    <div class="kpi-card">
+      <div class="kpi-label">
+        <span>State of Charge</span>
+        <span class="badge-chip badge-charging badge-xs" id="kpi-soc-badge">LIVE</span>
+      </div>
+      <div class="card-gauge-kpi">
+        <svg class="gauge-svg-mini" viewBox="0 0 200 200" role="img" aria-label="Battery State of Charge Gauge">
+          <circle class="gauge-bg" cx="100" cy="100" r="85"/>
+          <circle id="gauge-fill" class="gauge-fill" cx="100" cy="100" r="85"/>
+          <text id="gauge-pct" class="gauge-text" x="100" y="110" text-anchor="middle">--.-%</text>
+        </svg>
+        <div class="capacity-details">
+          <span class="capacity-label">Pack Capacity</span>
+          <span class="capacity-value"><span id="mwh-rem">--</span> mWh</span>
+          <span class="capacity-sub">of <span id="mwh-fcc">--</span> mWh FCC</span>
+        </div>
+      </div>
+      <div class="kpi-sub">ACPI \_SB.BAT0 Chemistry Monitored</div>
+    </div>
+
+    <!-- Card 2: Active Power Flow -->
+    <div class="kpi-card">
+      <div class="kpi-label">
+        <span>Active Power Flow</span>
+        <span class="badge-chip badge-idle badge-xs">TELEMETRY</span>
+      </div>
+      <div id="stat-power" class="kpi-num kpi-num-safe">-- mW</div>
+      <div class="kpi-sub" id="power-flow-sub">Charge / Discharge Dynamics</div>
+    </div>
+
+    <!-- Card 3: Cycle Counter -->
+    <div class="kpi-card">
+      <div class="kpi-label">
+        <span>Cycle Counter</span>
+        <span class="badge-chip badge-idle badge-xs">ZERO-DRIFT</span>
+      </div>
+      <div id="kpi-cycle-int" class="kpi-num kpi-num-info">--</div>
+      <div class="kpi-sub">30-Decimal Coulomb Precision</div>
+    </div>
+
+    <!-- Card 4: Electrochemical Health (SoH) -->
+    <div class="kpi-card">
+      <div class="kpi-label">
+        <span>Electrochemical Health</span>
+        <span class="badge-chip badge-idle badge-xs">SOH MODEL</span>
+      </div>
+      <div id="stat-vhealth" class="kpi-num kpi-num-safe">--%</div>
+      <div class="kpi-sub">Scientific Degradation Model</div>
+    </div>
+
+    <!-- Card 5: Pack Voltage & AC Mains -->
+    <div class="kpi-card">
+      <div class="kpi-label">
+        <span>Pack Voltage &amp; Bus</span>
+        <span class="badge-chip badge-idle badge-xs">3S PACK</span>
+      </div>
+      <div id="stat-volt" class="kpi-num">-- V</div>
+      <div class="kpi-sub">
+        <span id="stat-mains">--</span> / <span id="stat-key">--</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Scientific 30-Decimal Laboratory Deck -->
+  <section class="card-registers">
+    <div class="reg-block">
+      <div class="reg-label">
+        <span>Accumulated Charging Cycles (30 Decimals)</span>
+        <span class="reg-tag-safe">ZERO-DRIFT FIXED POINT</span>
+      </div>
+      <div id="cycles-30" class="reg-val-30">--</div>
+    </div>
+    <div class="reg-block">
+      <div class="reg-label">
+        <span>Real-Time State of Charge Percentage (30 Decimals)</span>
+        <span class="reg-tag-info">CONTINUOUS INTEGRATION</span>
+      </div>
+      <div id="soc-30" class="reg-val-30">--</div>
+    </div>
+    <div class="reg-block">
+      <div class="reg-label">
+        <span>Electrochemical Virtual Health Percentage (30 Decimals)</span>
+        <span class="reg-tag-accent">SCIENTIFIC DEGRADATION</span>
+      </div>
+      <div id="vhealth-30" class="reg-val-30">--</div>
+    </div>
+  </section>
+
+  <!-- 6. Real-Time Telemetry Activity Stream -->
+  <section class="card-ledger">
+    <div class="ledger-header">
+      <span class="ledger-title">
+        <span class="pulse-dot pulse-dot-safe"></span>
+        LIVE TELEMETRY STREAM &amp; HARDWARE TRANSITION LEDGER
+      </span>
+      <span class="badge-chip badge-idle badge-xs" id="ledger-count-badge">STREAM ACTIVE</span>
+    </div>
+    <div class="ledger-table-wrap">
+      <table class="ledger-table">
+        <thead>
+          <tr>
+            <th>Timestamp (UTC)</th>
+            <th>Hardware Event</th>
+            <th>Cell Voltage</th>
+            <th>Power Flow</th>
+            <th>Coulomb State</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="ledger-tbody">
+          <tr id="ledger-initial-row">
+            <td colspan="6" class="ledger-empty">Awaiting live telemetry packets from /api/stream...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 7. Footer -->
   <footer>
-    Hardware Mirror Replicas: C:\ProgramData\BMS · D:\.bms_hardware_nvram.dat · S:\.bms_hardware_nvram.dat · Linux /var/lib/bms
+    Hardware Mirror Replicas: C:\ProgramData\BMS / D:\.bms_hardware_nvram.dat / S:\.bms_hardware_nvram.dat / Linux /var/lib/bms
   </footer>
 </div>
 

@@ -1,6 +1,7 @@
 /**
- * BMS Date-Range Calendar Popover & Time Window Presets
+ * BMS Date-Range Calendar Popover and Time Window Presets
  * Zero browser-native date picker inputs
+ * Zero em-dashes or en-dashes
  */
 
 export class BmsCalendar {
@@ -17,31 +18,41 @@ export class BmsCalendar {
 
   init() {
     if (!this.container) return;
-    this.triggerBtn = this.container.querySelector('.bms-btn');
-    this.panel = this.container.querySelector('.calendar-panel');
-    this.rangeLabel = this.container.querySelector('#active-range-label');
-    this.monthTitle = this.container.querySelector('#cal-month-title');
-    this.calGrid = this.container.querySelector('#cal-grid');
+    this.triggerBtn = this.container.querySelector(".bms-btn");
+    this.panel = this.container.querySelector(".calendar-panel");
+    this.rangeLabel = this.container.querySelector("#active-range-label");
+    this.monthTitle = this.container.querySelector("#cal-month-title");
+    this.calGrid = this.container.querySelector("#cal-grid");
 
-    this.triggerBtn.addEventListener('click', (e) => {
+    this.triggerBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this.toggle();
     });
 
-    const presetPills = this.container.querySelectorAll('.preset-pill');
-    presetPills.forEach(pill => {
-      pill.addEventListener('click', (e) => {
+    const presetPills = this.container.querySelectorAll(".preset-pill");
+    presetPills.forEach((pill) => {
+      pill.addEventListener("click", (e) => {
         e.stopPropagation();
         this.selectPreset(pill.dataset.preset, pill);
       });
     });
 
-    const prevBtn = this.container.querySelector('#cal-prev-btn');
-    const nextBtn = this.container.querySelector('#cal-next-btn');
-    if (prevBtn) prevBtn.addEventListener('click', (e) => { e.stopPropagation(); this.changeMonth(-1); });
-    if (nextBtn) nextBtn.addEventListener('click', (e) => { e.stopPropagation(); this.changeMonth(1); });
+    const prevBtn = this.container.querySelector("#cal-prev-btn");
+    const nextBtn = this.container.querySelector("#cal-next-btn");
+    if (prevBtn) {
+      prevBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.changeMonth(-1);
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.changeMonth(1);
+      });
+    }
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener("click", (e) => {
       if (!this.container.contains(e.target)) {
         this.close();
       }
@@ -56,20 +67,22 @@ export class BmsCalendar {
 
   open() {
     this.isOpen = true;
-    this.container.classList.add('calendar-open');
+    this.container.classList.add("calendar-open");
+    if (this.triggerBtn) this.triggerBtn.setAttribute("aria-expanded", "true");
     this.renderMonth();
   }
 
   close() {
     this.isOpen = false;
-    this.container.classList.remove('calendar-open');
+    this.container.classList.remove("calendar-open");
+    if (this.triggerBtn) this.triggerBtn.setAttribute("aria-expanded", "false");
   }
 
   selectPreset(presetKey, pillEl) {
     this.activePreset = presetKey;
-    const presetPills = this.container.querySelectorAll('.preset-pill');
-    presetPills.forEach(p => p.classList.remove('active'));
-    if (pillEl) pillEl.classList.add('active');
+    const presetPills = this.container.querySelectorAll(".preset-pill");
+    presetPills.forEach((p) => p.classList.remove("active"));
+    if (pillEl) pillEl.classList.add("active");
 
     const labels = {
       "5m": "Live 5 Minutes",
@@ -97,12 +110,15 @@ export class BmsCalendar {
 
   renderMonth() {
     if (!this.calGrid || !this.monthTitle) return;
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const months = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
     const year = this.viewDate.getFullYear();
     const month = this.viewDate.getMonth();
 
     this.monthTitle.textContent = `${months[month]} ${year}`;
-    this.calGrid.innerHTML = '';
+    this.calGrid.innerHTML = "";
 
     const firstDayIndex = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -110,30 +126,30 @@ export class BmsCalendar {
 
     // Fill leading empty days from previous month
     for (let i = firstDayIndex; i > 0; i--) {
-      const d = document.createElement('div');
-      d.className = 'cal-day other-month';
+      const d = document.createElement("div");
+      d.className = "cal-day other-month";
       d.textContent = prevDays - i + 1;
       this.calGrid.appendChild(d);
     }
 
     // Days in current month
     for (let day = 1; day <= daysInMonth; day++) {
-      const d = document.createElement('div');
-      d.className = 'cal-day';
+      const d = document.createElement("div");
+      d.className = "cal-day";
       d.textContent = day;
       const dObj = new Date(year, month, day);
 
       if (this.startDate && dObj.toDateString() === this.startDate.toDateString()) {
-        d.classList.add('start-date');
+        d.classList.add("start-date");
       }
       if (this.endDate && dObj.toDateString() === this.endDate.toDateString()) {
-        d.classList.add('end-date');
+        d.classList.add("end-date");
       }
       if (this.startDate && this.endDate && dObj > this.startDate && dObj < this.endDate) {
-        d.classList.add('in-range');
+        d.classList.add("in-range");
       }
 
-      d.addEventListener('click', (e) => {
+      d.addEventListener("click", (e) => {
         e.stopPropagation();
         this.handleDayClick(dObj);
       });
@@ -159,8 +175,8 @@ export class BmsCalendar {
 
   applyCustomRange() {
     if (!this.startDate || !this.endDate) return;
-    const startIso = this.startDate.toISOString().split('T')[0];
-    const endIso = this.endDate.toISOString().split('T')[0];
+    const startIso = this.startDate.toISOString().split("T")[0];
+    const endIso = this.endDate.toISOString().split("T")[0];
     if (this.rangeLabel) {
       this.rangeLabel.textContent = `${startIso} to ${endIso}`;
     }

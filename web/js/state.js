@@ -1,6 +1,7 @@
 /**
- * BMS Reactive State Store & Precision Formatters
+ * BMS Reactive State Store and Precision Formatters
  * Strict 30-decimal string preservation without IEEE 754 float casting
+ * Zero em-dashes or en-dashes
  */
 
 export const store = {
@@ -15,24 +16,24 @@ export const store = {
   },
 
   notify(event, data) {
-    this.listeners.forEach(fn => fn(event, data));
+    this.listeners.forEach((fn) => fn(event, data));
   },
 
   setTelemetryAndState(telem, st) {
     this.telemetry = telem;
     this.state = st;
-    this.notify('telemetry_update', { telemetry: telem, state: st });
+    this.notify("telemetry_update", { telemetry: telem, state: st });
   },
 
   setHistory(points) {
     this.historyPoints = points;
-    this.notify('history_update', points);
+    this.notify("history_update", points);
   }
 };
 
 /**
  * High-precision 30-decimal string formatter
- * Avoids JavaScript 64-bit float precision collapse (>15-17 digits)
+ * Prevents JavaScript 64-bit float precision collapse (>15-17 digits)
  */
 export function format30(str) {
   if (!str) return "--";
