@@ -90,24 +90,23 @@ def install_windows():
     except Exception as exc:
         print(f"[!] Task Scheduler creation failed: {exc}")
 
-    # 2. Fallback: Windows Startup Folder script
+    # 2. Native Fallback: Windows Registry User Run Key (Zero VBScript, zero popups)
     try:
-        appdata = os.environ.get("APPDATA")
-        if appdata:
-            startup_dir = os.path.join(appdata, r"Microsoft\Windows\Start Menu\Programs\Startup")
-            if os.path.isdir(startup_dir):
-                vbs_path = os.path.join(startup_dir, "BMSTelemetry.vbs")
-                vbs_content = (
-                    f'Set WshShell = CreateObject("WScript.Shell")\r\n'
-                    f'WshShell.Run Chr(34) & "{exec_python}" & Chr(34) & " " & Chr(34) & "{BMS_UI_PY}" & Chr(34) & " --no-browser", 0\r\n'
-                    f'Set WshShell = Nothing\r\n'
-                )
-                with open(vbs_path, "w", encoding="ascii") as f:
-                    f.write(vbs_content)
-                print(f"[OK] Fallback startup script created at: {vbs_path}")
-                return True
+        reg_cmd = [
+            "reg", "add", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run",
+            "/v", TASK_NAME,
+            "/t", "REG_SZ",
+            "/d", cmd_action,
+            "/f"
+        ]
+        res = subprocess.run(reg_cmd, capture_output=True, text=True)
+        if res.returncode == 0:
+            print(f"[OK] Native Windows Registry Run Key configured: HKCU\\...\\Run\\{TASK_NAME}")
+            return True
+        else:
+            print(f"[!] Registry Run Key configuration returned: {res.stderr.strip()}")
     except Exception as exc:
-        print(f"[!] Startup folder fallback failed: {exc}")
+        print(f"[!] Registry autostart fallback error: {exc}")
 
     return False
 
@@ -125,15 +124,31 @@ def remove_windows():
         print(f"[!] Task Scheduler removal error: {exc}")
 
     try:
+        reg_cmd = [
+            "reg", "delete", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run",
+            "/v", TASK_NAME,
+            "/f"
+        ]
+        res = subprocess.run(reg_cmd, capture_output=True, text=True)
+        if res.returncode == 0:
+            print(f"[OK] Removed Registry Run key '{TASK_NAME}'.")
+            success = True
+    except Exception as exc:
+        print(f"[!] Registry key removal error: {exc}")
+
+    # Remove any lingering legacy VBS files if they exist from prior versions
+    try:
         appdata = os.environ.get("APPDATA")
         if appdata:
-            vbs_path = os.path.join(appdata, r"Microsoft\Windows\Start Menu\Programs\Startup\BMSTelemetry.vbs")
-            if os.path.isfile(vbs_path):
-                os.remove(vbs_path)
-                print(f"[OK] Removed Startup script '{vbs_path}'.")
-                success = True
-    except Exception as exc:
-        print(f"[!] Startup script removal error: {exc}")
+            startup_dir = os.path.join(appdata, r"Microsoft\Windows\Start Menu\Programs\Startup")
+            for vbs in ("BMSTelemetry.vbs", "bms_ui_startup.vbs"):
+                p = os.path.join(startup_dir, vbs)
+                if os.path.isfile(p):
+                    os.remove(p)
+                    print(f"[OK] Purged legacy VBS script: {p}")
+                    success = True
+    except Exception:
+        pass
 
     return success
 
@@ -151,14 +166,18 @@ def status_windows():
     except Exception:
         pass
 
-    appdata = os.environ.get("APPDATA")
-    if appdata:
-        vbs_path = os.path.join(appdata, r"Microsoft\Windows\Start Menu\Programs\Startup\BMSTelemetry.vbs")
-        if os.path.isfile(vbs_path):
-            print(f"[ACTIVE] Startup folder script exists at: {vbs_path}")
+    try:
+        res = subprocess.run(["reg", "query", r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run", "/v", TASK_NAME], capture_output=True, text=True)
+        if res.returncode == 0:
+            print(f"[ACTIVE] Windows Registry Run Key configured:")
+            for line in res.stdout.splitlines():
+                if TASK_NAME in line:
+                    print("  ", line.strip())
             return
+    except Exception:
+        pass
 
-    print("[INACTIVE] No autostart task or startup script configured.")
+    print("[INACTIVE] No autostart task or registry run key configured.")
 
 
 # ── Linux systemd Implementation ───────────────────────────────────────────────
