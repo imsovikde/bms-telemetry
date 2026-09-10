@@ -64,3 +64,7 @@ jobs:
         if: runner.os == 'Windows'
         run: python -c "import bms_service; print('bms_service importable')"
         shell: pwsh
+
+      # ── 9. Guard F: Frontend UI Contract ──────────────────────────────────
+      - name: "Guard F: Frontend UI Contract & Anti-Slop Verification"
+        run: python tests/test_ui_contract.py

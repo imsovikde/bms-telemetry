@@ -28,6 +28,10 @@ jobs:
       run: |
         python tests/test_arithmetic.py
 
+    - name: Run Frontend UI Contract Tests
+      run: |
+        python tests/test_ui_contract.py
+
     - name: Run 100-Cycle Deep Verification Suite
       run: |
         python verify_100.py

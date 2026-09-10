@@ -226,9 +226,23 @@ bms-telemetry/
 ├── bms.cmd                         # Windows CMD/PowerShell root CLI launcher
 ├── tests/
 │   ├── test_arithmetic.py          # 21-test arbitrary-precision & offline delta suite
-│   └── test_antimock.py            # Hardware driver ACPI interface verification suite
+│   ├── test_antimock.py            # Hardware driver ACPI interface verification suite
+│   ├── test_ui_contract.py         # 9-test frontend static asset & API contract suite
+│   └── test_js_algorithms.mjs      # Headless Node.js verification for LTTB & vector paths
+├── web/                            # Decoupled industrial telemetry frontend (anti-AI-slop)
+│   ├── index.html                  # Semantic HTML5 cockpit with zero native form controls
+│   ├── css/                        # Modular Shadcn dark token palette, grid & components
+│   │   ├── tokens.css
+│   │   ├── layout.css
+│   │   └── components.css
+│   └── js/                         # ES modules: pure SVG vector charting, calendar, combobox
+│       ├── app.js
+│       ├── chart.js
+│       ├── combobox.js
+│       ├── calendar.js
+│       └── state.js
 ├── bms_engine.py                   # Core 30-decimal ACPI engine, TUI & archive manager
-├── bms_ui.py                       # Real-time Glassmorphism Web UI & 4 Hz SSE stream server
+├── bms_ui.py                       # Zero-dependency HTTP static asset & 4 Hz SSE stream server
 ├── bms_service.py                  # Windows Service wrapper with embedded HTTP daemon
 ├── bms_core.cpp                    # Native C++20 engine with 128-bit Fixed30 arithmetic
 ├── verify_100.py                   # Standalone 100-cycle test harness
