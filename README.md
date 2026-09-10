@@ -10,7 +10,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://github.com/imsovikde/bms-telemetry)
 [![License](https://img.shields.io/badge/License-MIT-green)](./LICENSE)
 
-[Product Requirements (PRD)](./PRD.md) · [Architecture](./ARCHITECTURE.md) · [CLI Reference](./CLI.md) · [Specification](./SPEC.md) · [Changelog](./CHANGELOG.md) · [Contributing](./CONTRIBUTING.md) · [Security](./SECURITY.md) · [Support](./SUPPORT.md)
+[Product Requirements (PRD)](./PRD.md) · [Device Architecture](./DEVICE_ARCHITECTURE.md) · [Architecture](./ARCHITECTURE.md) · [Hall of Shame](./HALL_OF_SHAME.md) · [CLI Reference](./CLI.md) · [Specification](./SPEC.md) · [Changelog](./CHANGELOG.md) · [Contributing](./CONTRIBUTING.md) · [Security](./SECURITY.md) · [Support](./SUPPORT.md)
 
 ---
 
@@ -212,9 +212,11 @@ bms-telemetry/
 ├── bms_service.py                  # Windows Service wrapper (win32serviceutil)
 ├── verify_100.py                   # Standalone 100-cycle test harness
 ├── ARCHITECTURE.md                 # ACPI DSDT forensics, physics models, persistence tiering
+├── DEVICE_ARCHITECTURE.md          # Complete hardware architecture & execution capabilities
 ├── CLI.md                          # Full CLI command and flag manual
 ├── SPEC.md                         # JSON schemas, cryptographic envelopes, resource bounds
 ├── PRD.md                          # Product Requirements Document & catastrophic defect post-mortem
+├── HALL_OF_SHAME.md                # Living regression and defect incident post-mortem ledger
 ├── AGENTS.md                       # Developer & AI coding agent invariants
 ├── CHANGELOG.md                    # Keep a Changelog historical ledger
 ├── CONTRIBUTING.md                 # Contribution guidelines and coding invariants
