@@ -17,6 +17,8 @@ bms [SUBCOMMAND] [OPTIONS]
 | Subcommand | Description | Default Target |
 | :--- | :--- | :--- |
 | `bms` / `bms status` | **Default:** Prints the ANSI-formatted 30-decimal telemetry and health dashboard. | Terminal STDOUT |
+| `bms live` / `bms tui` | **Real-Time Interactive TUI (4 Hz):** Continuous Coulomb integration, live 30-decimal tickers, wattage oscilloscope, zero-flicker double-buffered ANSI dashboard. | Interactive Terminal |
+| `bms ui` / `bms web` | **Generative Web Dashboard:** Launches local browser glassmorphism UI with real-time SVG circular gauges and Server-Sent Events (SSE). | Local Web Browser |
 | `bms full` / `bms json` | Dumps raw cryptographic state and ACPI register telemetry in JSON format. | Machine Readable / Pipe |
 | `bms test-100` | Executes the automated 100-cycle deep verification and stress test harness. | Self-Test Suite |
 | `bms sync-hw` | Forces cryptographic synchronization across all hardware storage tiers. | Hardware Mirrors |

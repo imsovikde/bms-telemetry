@@ -23,7 +23,15 @@ import json
 import hashlib
 from decimal import Decimal, getcontext
 
-# â”€â”€ Bootstrap: resolve engine whether run from repo root or tests/ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Reconfigure stdout/stderr to UTF-8 to prevent Windows cp1252 charmap crashes
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+# Resolve engine whether run from repo root or tests/
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
 for p in [_ROOT, r"C:\ProgramData\BMS"]:
@@ -74,11 +82,11 @@ def assert_true(name, condition, msg="condition was False"):
         _fail(name, msg)
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# SECTION 1 â€” Decimal Precision Primitives
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# =============================================================================
+# SECTION 1 - Decimal Precision Primitives
+# =============================================================================
 
-print("\nâ”€â”€ Section 1: Decimal Precision Primitives â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€")
+print("\n--- Section 1: Decimal Precision Primitives -----------------------------")
 
 
 def test_to_dec30_int():
@@ -102,7 +110,7 @@ def test_to_dec30_string():
 def test_fmt30_round_trip():
     original = Decimal("15.309873844527311029482710394827")
     s = engine.fmt30(original)
-    assert_true("fmt30 length â‰¥ 32 chars", len(s) >= 32)
+    assert_true("fmt30 length >= 32 chars", len(s) >= 32)
     recovered = engine.to_dec30(s)
     assert_eq("fmt30 round-trip fidelity", recovered, original)
 
@@ -112,11 +120,11 @@ test_to_dec30_float()
 test_to_dec30_string()
 test_fmt30_round_trip()
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# SECTION 2 â€” Online Coulomb Integration
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# =============================================================================
+# SECTION 2 - Online Coulomb Integration
+# =============================================================================
 
-print("\nâ”€â”€ Section 2: Online Coulomb Integration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€")
+print("\n--- Section 2: Online Coulomb Integration -------------------------------")
 
 
 def _make_telem(remaining, full=69993.0, design=69993.0, power_online=True,
@@ -141,11 +149,11 @@ def test_no_delta_no_increment():
     before = engine.to_dec30(state["accumulated_cycles"])
     state2 = engine.process_telemetry_and_update_state(telem, state, persist=False)
     after = engine.to_dec30(state2["accumulated_cycles"])
-    assert_eq("no-delta â†’ no cycle increment", after, before)
+    assert_eq("no-delta -> no cycle increment", after, before)
 
 
 def test_positive_delta_accumulates():
-    """Î”E = 7000 mWh out of 69993 mWh design cap â†’ +0.10001â€¦ cycle."""
+    """dE = 7000 mWh out of 69993 mWh design cap -> +0.10001... cycle."""
     state = engine.default_initial_state()
     # Seed a low remaining so we'll see a jump
     state["last_remaining_capacity_mwh"] = engine.fmt30(Decimal("28000.0"))
@@ -192,24 +200,24 @@ test_positive_delta_accumulates()
 test_sub_50mwh_gate()
 test_large_cycle_precision()
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# SECTION 3 â€” Offline Î”Q Boot-Recovery Logic
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# =============================================================================
+# SECTION 3 - Offline dQ Boot-Recovery Logic
+# =============================================================================
 
-print("\nâ”€â”€ Section 3: Offline Î”Q Boot-Recovery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€")
+print("\n--- Section 3: Offline dQ Boot-Recovery ---------------------------------")
 
 
 def test_offline_delta_no_prior_shutdown():
-    """No last_shutdown_capacity_mwh â†’ state unchanged."""
+    """No last_shutdown_capacity_mwh -> state unchanged."""
     state = engine.default_initial_state()
     cycles_before = state["accumulated_cycles"]
     state2 = engine._detect_offline_delta(state)
-    assert_eq("no shutdown key â†’ no mutation", state2["accumulated_cycles"], cycles_before)
+    assert_eq("no shutdown key -> no mutation", state2["accumulated_cycles"], cycles_before)
 
 
 def test_offline_delta_above_gate(monkeypatch_telem_fn=None):
     """
-    Simulate: shutdown at 30,000 mWh, boot at 65,000 mWh â†’ Î”E=35,000 mWh > 50 mWh.
+    Simulate: shutdown at 30,000 mWh, boot at 65,000 mWh -> dE=35,000 mWh > 50 mWh.
     Verify cycle counter increments by exactly 35000/69993.
     """
     state = engine.default_initial_state()
@@ -237,7 +245,7 @@ def test_offline_delta_above_gate(monkeypatch_telem_fn=None):
 
 
 def test_offline_delta_below_gate():
-    """Î”E = 40 mWh (< 50 mWh gate) â†’ no injection."""
+    """dE = 40 mWh (< 50 mWh gate) -> no injection."""
     state = engine.default_initial_state()
     state["accumulated_cycles"] = engine.fmt30(Decimal("5.0"))
     state["design_capacity_mwh"] = engine.fmt30(Decimal("69993.0"))
@@ -251,25 +259,22 @@ def test_offline_delta_below_gate():
         engine.get_telemetry = _orig
 
     after = engine.to_dec30(state2["accumulated_cycles"])
-    assert_eq("offline delta < gate â†’ no injection", after, engine.to_dec30("5.0"))
+    assert_eq("offline delta < gate -> no injection", after, engine.to_dec30("5.0"))
 
 
 test_offline_delta_no_prior_shutdown()
 test_offline_delta_above_gate()
 test_offline_delta_below_gate()
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# SECTION 4 â€” Virtual Health Formula
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# —————————————————————————————————————————————————————————————————————————————
-# SECTION 4 — Virtual Health Formula
-# —————————————————————————————————————————————————————————————————————————————
+# =============================================================================
+# SECTION 4 - Virtual Health Formula
+# =============================================================================
 
-print("\n── Section 4: Virtual Health Formula ────────────────────────────────")
+print("\n--- Section 4: Virtual Health Formula ----------------------------------")
 
 
 def test_health_new_battery():
-    """Fresh battery (0 cycles, 25°C, full FCC = design) → ~100% health."""
+    """Fresh battery (0 cycles, 25 deg C, full FCC = design) -> ~100% health."""
     result = engine.calculate_virtual_health(
         fcc_mwh=Decimal("69993.0"),
         design_mwh=Decimal("69993.0"),
@@ -281,7 +286,7 @@ def test_health_new_battery():
         power_online=False,
     )
     vh = result["virtual_health_pct"]
-    assert_true("new battery health ≥ 98%", vh >= Decimal("98.0"),
+    assert_true("new battery health >= 98%", vh >= Decimal("98.0"),
                 f"got {vh}")
 
 
@@ -315,19 +320,19 @@ def test_health_bounded_0_to_100():
         power_online=True,
     )
     vh = result["virtual_health_pct"]
-    assert_true("health floor ≥ 0%", vh >= Decimal("0.0"), f"got {vh}")
-    assert_true("health ceiling ≤ 100%", vh <= Decimal("100.0"), f"got {vh}")
+    assert_true("health floor >= 0%", vh >= Decimal("0.0"), f"got {vh}")
+    assert_true("health ceiling <= 100%", vh <= Decimal("100.0"), f"got {vh}")
 
 
 test_health_new_battery()
 test_health_degraded_500_cycles()
 test_health_bounded_0_to_100()
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# SECTION 5 â€” HMAC Cryptographic Integrity
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# =============================================================================
+# SECTION 5 - HMAC Cryptographic Integrity
+# =============================================================================
 
-print("\nâ”€â”€ Section 5: HMAC Cryptographic Integrity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€")
+print("\n--- Section 5: HMAC Cryptographic Integrity ----------------------------")
 
 
 def test_hmac_sign_verify():
@@ -347,9 +352,9 @@ def test_hmac_tamper_detection():
 test_hmac_sign_verify()
 test_hmac_tamper_detection()
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# =============================================================================
 # SUMMARY
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# =============================================================================
 
 print(f"\n{'='*72}")
 total = _PASSED + _FAILED

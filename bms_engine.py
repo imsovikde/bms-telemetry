@@ -32,6 +32,14 @@ import signal
 from datetime import datetime, timezone
 from decimal import Decimal, getcontext, ROUND_HALF_UP
 
+# Reconfigure stdout/stderr to UTF-8 to prevent Windows cp1252 charmap crashes
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # Set high-precision decimal context (60 digits internal precision)
 getcontext().prec = 60
 DEC_30 = Decimal("0." + "0" * 30)
@@ -1066,6 +1074,252 @@ def run_daemon_loop() -> None:
 
 
 
+def _render_live_tui_frame(telem: dict, state: dict, status_msg: str, paused: bool, power_history: list) -> str:
+    design_cap = Decimal(str(state.get("design_capacity_mwh", DESIGN_CAPACITY_MWH)))
+    full_cap = Decimal(str(state.get("last_full_charge_capacity_mwh", DESIGN_CAPACITY_MWH)))
+    rem_cap = Decimal(str(state.get("last_remaining_capacity_mwh", DESIGN_CAPACITY_MWH)))
+    accum_cycles = str(state.get("accumulated_cycles", HISTORICAL_BASELINE_CYCLES))
+    soc_pct = str(state.get("state_of_charge_percentage", "100.0"))
+    vhealth_pct = str(state.get("virtual_health_percentage", "99.0"))
+    loss_cycle = str(state.get("cycle_degradation_loss_pct", "0.0"))
+    loss_thermal = str(state.get("thermal_stress_loss_pct", "0.0"))
+    loss_voltage = str(state.get("voltage_stress_loss_pct", "0.0"))
+
+    is_chg = telem.get("charging", False)
+    is_dis = telem.get("discharging", False)
+    chg_rate = float(telem.get("charge_rate_mw", 0.0))
+    dis_rate = float(telem.get("discharge_rate_mw", 0.0))
+    voltage_mv = float(telem.get("voltage_mv", 11550.0))
+
+    if is_chg:
+        mode_badge = f"\033[1;42;30m [CHARGING: +{chg_rate:,.0f} mW] \033[0m"
+        p_val = f"+{chg_rate/1000.0:.2f} W"
+    elif is_dis:
+        mode_badge = f"\033[1;43;30m [DISCHARGING: -{dis_rate:,.0f} mW] \033[0m"
+        p_val = f"-{dis_rate/1000.0:.2f} W"
+    else:
+        mode_badge = f"\033[1;44;37m [AC MAINS IDLE] \033[0m"
+        p_val = "0.00 W"
+
+    # Calculate Progress Bar (40 chars)
+    soc_float = float(rem_cap / full_cap) if full_cap > 0 else 1.0
+    soc_float = max(0.0, min(1.0, soc_float))
+    filled_len = int(round(40 * soc_float))
+    bar_color = "\033[1;32m" if soc_float > 0.5 else ("\033[1;33m" if soc_float > 0.2 else "\033[1;31m")
+    bar = f"{bar_color}{'=' * filled_len}{'.' * (40 - filled_len)}\033[0m"
+
+    # Sparkline generation for power history
+    spark_chars = " _.-~^"
+    sparkline = ""
+    if power_history:
+        min_p = min(power_history)
+        max_p = max(power_history)
+        p_range = max_p - min_p if max_p != min_p else 1.0
+        for p in power_history[-24:]:
+            norm = (p - min_p) / p_range
+            idx = min(len(spark_chars) - 1, max(0, int(norm * (len(spark_chars) - 1))))
+            sparkline += spark_chars[idx]
+    else:
+        sparkline = "─" * 24
+
+    ts_now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+    status_icon = "|| PAUSED" if paused else "● LIVE STREAM (4 Hz)"
+
+    lines = [
+        "\033[H",  # Home cursor (zero-flicker differential rewrite)
+        "========================================================================================",
+        "  \033[1;37mBMS ULTRA-HIGH-PRECISION REAL-TIME TELEMETRY ENGINE\033[0m  [\033[1;36mEM_IDL822_V2.0 / Raptor Lake-P\033[0m]",
+        "========================================================================================",
+        f"  Telemetry State  : \033[1;32m{status_icon:<20}\033[0m | Source: \033[1;33m{telem.get('source', 'WMI COM')[:28]}\033[0m",
+        f"  Timestamp (UTC)  : {ts_now:<22} | Master Key: {HARDWARE_KEY_HEX[:12]}...{HARDWARE_KEY_HEX[-6:]}",
+        "----------------------------------------------------------------------------------------",
+        f"  BATTERY STATE    : {mode_badge}  Terminal Voltage: \033[1;37m{voltage_mv/1000.0:.3f} V\033[0m",
+        f"  ENERGY RESERVE   : [{bar}] \033[1;36m{float(soc_pct[:10]):.2f}%\033[0m ({float(rem_cap):,.0f} / {float(full_cap):,.0f} mWh)",
+        f"  LIVE POWER FLOW  : \033[1;35m{p_val:<10}\033[0m History: [{sparkline}]",
+        "----------------------------------------------------------------------------------------",
+        " [30-DECIMAL CONTINUOUS HIGH-PRECISION REGISTERS (REAL-TIME COULOMB INTEGRATION)]",
+        f"  ACCUMULATED CYCLES : \033[1;32m{accum_cycles[:32]}\033[1;36m{accum_cycles[32:]}\033[0m",
+        f"  STATE OF CHARGE    : \033[1;36m{soc_pct[:32]}\033[1;32m{soc_pct[32:]} %\033[0m",
+        f"  VIRTUAL HEALTH SoH : \033[1;32m{vhealth_pct[:32]}\033[1;33m{vhealth_pct[32:]} %\033[0m",
+        "",
+        " [MULTI-FACTOR ELECTROCHEMICAL DEGRADATION MODEL BREAKDOWN]",
+        f"  Base Capacity Retention : 100.000000000000000000000000000000 %",
+        f"  SEI Power-Law Loss      : \033[1;31m-{loss_cycle[:24]}%\033[0m  (z=0.82, A=0.122858, Anode Passivation)",
+        f"  Arrhenius Thermal Loss  : \033[1;31m-{loss_thermal[:24]}%\033[0m  (Ea/R=3788 K, T=31.5 C Kinetic Rate)",
+        f"  High-Voltage Float Loss : \033[1;31m-{loss_voltage[:24]}%\033[0m  (Overpotential Float Stress)",
+        "",
+        " [PERSISTENCE TIERS & S5 OFFLINE AUDIT]",
+        f"  S5 Offline Recovery : {state.get('s5_offline_charges_count', 0)} events (+{Decimal(str(state.get('s5_offline_energy_mwh', '0'))):,.1f} mWh recovered)",
+        f"  Hardware NVRAM Seal : Monotonic Seq #{state.get('monotonic_seq', 1)} | HMAC-SHA256 Signed",
+        f"  Format-Immune Disk1 : D:\\.bms_hardware_nvram.dat & S:\\.bms_hardware_nvram.dat [ONLINE]",
+        "----------------------------------------------------------------------------------------",
+        f"  Status Message: \033[1;33m{status_msg:<40}\033[0m",
+        "  Controls: [\033[1;37mQ\033[0m] Quit & Save | [\033[1;37mSpace\033[0m] Pause | [\033[1;37mS\033[0m] Sync NVRAM | [\033[1;37mR\033[0m] Poll ACPI",
+        "========================================================================================\n"
+    ]
+    return "\n".join(lines)
+
+
+def run_live_tui(refresh_interval: float = 0.25):
+    """
+    Ultra-High-Precision Real-Time Interactive Terminal UI (TUI).
+    Continuously integrates Coulomb flow and updates 30-decimal digits live
+    at 4 Hz with zero window flashing, zero cursor jitter, and double-buffered ANSI rendering.
+    """
+    if is_windows():
+        try:
+            import ctypes
+            from ctypes import wintypes
+            kernel32 = ctypes.windll.kernel32
+            hStdOut = kernel32.GetStdHandle(-11)
+            mode = wintypes.DWORD()
+            kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode))
+            kernel32.SetConsoleMode(hStdOut, mode.value | 0x0004)
+        except Exception:
+            pass
+
+    state = load_state()
+    state = _detect_offline_delta(state)
+    telem = get_telemetry()
+    state = process_telemetry_and_update_state(telem, state, persist=False)
+
+    # Switch to alternate screen buffer and hide cursor
+    sys.stdout.write("\033[?1049h\033[?25l")
+    sys.stdout.flush()
+
+    last_checkpoint_time = time.time()
+    last_tick_time = time.time()
+    last_hw_query_time = time.time()
+    running = True
+    paused = False
+    status_msg = "LIVE TELEMETRY ACTIVE (4 Hz)"
+    power_history = []
+
+    def cleanup():
+        try:
+            save_state(state)
+        except Exception:
+            pass
+        sys.stdout.write("\033[?1049l\033[?25h")
+        sys.stdout.flush()
+
+    def check_key():
+        if is_windows():
+            try:
+                import msvcrt
+                if msvcrt.kbhit():
+                    ch = msvcrt.getch()
+                    try:
+                        return ch.decode("utf-8", errors="ignore").lower()
+                    except Exception:
+                        return ""
+            except Exception:
+                pass
+        else:
+            try:
+                import select
+                r, _, _ = select.select([sys.stdin], [], [], 0)
+                if r:
+                    return sys.stdin.read(1).lower()
+            except Exception:
+                pass
+        return None
+
+    try:
+        while running:
+            now = time.time()
+            dt = now - last_tick_time
+            last_tick_time = now
+
+            k = check_key()
+            if k in ["q", "\x03"]:
+                break
+            elif k == " ":
+                paused = not paused
+                status_msg = "PAUSED" if paused else "LIVE TELEMETRY ACTIVE"
+            elif k == "s":
+                save_state(state)
+                status_msg = f"COMMITTED TO NVRAM (Seq #{state.get('monotonic_seq')})"
+            elif k == "r":
+                telem = get_telemetry()
+                status_msg = f"HARDWARE REGISTERS RE-POLLED"
+
+            if now - last_hw_query_time >= 2.0:
+                telem = get_telemetry()
+                last_hw_query_time = now
+
+            if not paused and dt > 0:
+                chg_mw = float(telem.get("charge_rate_mw", 0.0))
+                dis_mw = float(telem.get("discharge_rate_mw", 0.0))
+                net_p = chg_mw if telem.get("charging") else (-dis_mw if telem.get("discharging") else 0.0)
+
+                power_history.append(net_p)
+                if len(power_history) > 30:
+                    power_history.pop(0)
+
+                design_cap = to_dec30(state.get("design_capacity_mwh", DESIGN_CAPACITY_MWH))
+                full_cap = to_dec30(state.get("last_full_charge_capacity_mwh", DESIGN_CAPACITY_MWH))
+                cur_rem = to_dec30(state.get("last_remaining_capacity_mwh", DESIGN_CAPACITY_MWH))
+                accum_cycles = to_dec30(state.get("accumulated_cycles", HISTORICAL_BASELINE_CYCLES))
+                accum_energy = to_dec30(state.get("accumulated_energy_mwh", HISTORICAL_BASELINE_MWH))
+
+                if telem.get("charging") and chg_mw > 0:
+                    delta_e = to_dec30(Decimal(str(chg_mw)) * Decimal(str(dt)) / Decimal("3600.0"))
+                    delta_cyc = delta_e / design_cap
+                    cur_rem = min(full_cap, cur_rem + delta_e)
+                    accum_cycles += delta_cyc
+                    accum_energy += delta_e
+                elif telem.get("discharging") and dis_mw > 0:
+                    delta_e = to_dec30(Decimal(str(dis_mw)) * Decimal(str(dt)) / Decimal("3600.0"))
+                    cur_rem = max(Decimal("0.0"), cur_rem - delta_e)
+
+                soc_pct = (cur_rem / full_cap) * Decimal("100.0") if full_cap > Decimal("0") else Decimal("0.0")
+                if soc_pct > Decimal("100.0"):
+                    soc_pct = Decimal("100.0")
+
+                volt_mv = to_dec30(telem.get("voltage_mv") or NOMINAL_VOLTAGE_MV)
+                h_res = calculate_virtual_health(
+                    full_cap, design_cap, accum_cycles, volt_mv,
+                    Decimal(str(chg_mw)), Decimal(str(dis_mw)), 31.5, telem.get("power_online", True)
+                )
+
+                state["accumulated_cycles"] = fmt30(accum_cycles)
+                state["accumulated_energy_mwh"] = fmt30(accum_energy)
+                state["last_remaining_capacity_mwh"] = fmt30(cur_rem)
+                state["state_of_charge_percentage"] = fmt30(soc_pct)
+                state["virtual_health_percentage"] = fmt30(h_res["virtual_health_pct"])
+                state["cycle_degradation_loss_pct"] = fmt30(h_res["loss_cycle_pct"])
+                state["thermal_stress_loss_pct"] = fmt30(h_res["loss_thermal_pct"])
+                state["voltage_stress_loss_pct"] = fmt30(h_res["loss_voltage_pct"])
+
+            if now - last_checkpoint_time >= 15.0:
+                save_state(state)
+                last_checkpoint_time = now
+
+            frame = _render_live_tui_frame(telem, state, status_msg, paused, power_history)
+            sys.stdout.write(frame)
+            sys.stdout.flush()
+
+            time.sleep(refresh_interval)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        cleanup()
+
+
+def run_web_ui(port: int = 8989):
+    """Launches the Generative Web UI dashboard."""
+    try:
+        import bms_ui
+        bms_ui.start_server(port=port, open_browser=True)
+    except ImportError:
+        ui_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bms_ui.py")
+        if os.path.exists(ui_script):
+            subprocess.run([sys.executable, ui_script])
+        else:
+            print("[!] bms_ui.py not found in working directory.")
+
+
 def run_biometric_fix():
     print("\n=== INITIATING SURGICAL BIOMETRIC REMEDIATION ===")
     fix_script = r"C:\Users\imsov\AppData\Local\Temp\HardwareBiometricDiagnostic\ApplyFix.ps1"
@@ -1135,6 +1389,10 @@ def main():
         telem = get_telemetry()
         state = process_telemetry_and_update_state(telem, state)
         print_bms_dashboard(telem, state)
+    elif args[0] in ["live", "tui", "interactive", "monitor", "watch"]:
+        run_live_tui()
+    elif args[0] in ["ui", "web", "gui", "dashboard"]:
+        run_web_ui()
     elif args[0] in ["full", "json", "dump"]:
         state = load_state()
         telem = get_telemetry()
@@ -1149,8 +1407,10 @@ def main():
     elif args[0] in ["fix-bio", "fix-fingerprint", "reset-bio"]:
         run_biometric_fix()
     elif args[0] in ["help", "-h", "--help"]:
-        print("Usage: bms [status|full|test-100|sync-hw|daemon|fix-bio|help]")
+        print("Usage: bms [status|live|ui|full|test-100|sync-hw|daemon|fix-bio|help]")
         print("  status   : (Default) Display formatted 30-decimal BMS battery & cycle telemetry.")
+        print("  live     : Launch ultra-smooth, real-time 30-decimal interactive terminal UI (4 Hz).")
+        print("  ui       : Launch real-time generative glassmorphism web dashboard in browser.")
         print("  full     : Output raw JSON telemetry and cryptographic register dump.")
         print("  test-100 : Execute the automated 100-cycle deep verification and stress suite.")
         print("  sync-hw  : Force cryptographic synchronization across all hardware storage tiers.")
@@ -1158,7 +1418,7 @@ def main():
         print("  fix-bio  : Trigger automated elevated repair of the fingerprint biometric lockout.")
     else:
         print(f"Unknown argument: {args[0]}")
-        print("Usage: bms [status|full|test-100|sync-hw|daemon|fix-bio|help]")
+        print("Usage: bms [status|live|ui|full|test-100|sync-hw|daemon|fix-bio|help]")
 
 
 if __name__ == "__main__":

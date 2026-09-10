@@ -24,6 +24,10 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    - name: Run Arithmetic Precision Unit Tests
+      run: |
+        python tests/test_arithmetic.py
+
     - name: Run 100-Cycle Deep Verification Suite
       run: |
         python verify_100.py

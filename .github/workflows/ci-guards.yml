@@ -33,7 +33,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           pip install pywin32
-          python -m pywin32_postinstall -install
+          python -c "import win32serviceutil, win32com.client; print('pywin32 installed successfully')"
         shell: pwsh
 
       # ── 4. Guard A: CLI Integrity ─────────────────────────────────────────
@@ -52,7 +52,8 @@ jobs:
       - name: "Guard B: Anti-Mock — real hardware ACPI drivers actively probed"
         shell: python
         run: |
-          import inspect, sys
+          import inspect, sys, os
+          sys.path.insert(0, os.getcwd())
           import bms_engine
 
           # 1. Verify Windows hardware call path probes real WMI ACPI interface

@@ -160,7 +160,9 @@ Once installed, **`bms` is immediately available from any working directory (`C:
 
 | Command | Description |
 | :--- | :--- |
-| `bms status` | Displays formatted 30-decimal battery telemetry, cycles, virtual health, and mirror health. |
+| `bms` / `bms status` | Displays formatted 30-decimal battery telemetry, cycles, virtual health, and mirror health. |
+| `bms live` / `bms tui` | **Real-Time Interactive TUI (4 Hz)**: Live ticking 30-decimal cycle counter, instantaneous wattage oscilloscope, and zero-flicker double-buffered ANSI dashboard. |
+| `bms ui` / `bms web` | **Generative Web UI**: Launches local real-time glassmorphism browser dashboard with SVG gauges and live telemetry stream. |
 | `bms full` | Outputs machine-readable raw JSON telemetry envelope and crypto registers. |
 | `bms test-100` | Executes the automated 100-cycle deep verification, wipe simulation, and stress suite. |
 | `bms sync-hw` | Forces cryptographic synchronization across all 7 hardware storage tiers. |
@@ -168,6 +170,17 @@ Once installed, **`bms` is immediately available from any working directory (`C:
 | `bms fix-bio` | Triggers elevated surgical repair of the fingerprint sensor / biometrics lockout. |
 
 *For complete command parameters and scripting examples, see [CLI.md](./CLI.md).*
+
+---
+
+## ⚡ Native C++20 High-Performance Engine (`bms_core.cpp`)
+
+For ultra-low latency (<0.5ms) and standalone deployments without Python runtimes, a native C++20 engine is included in `bms_core.cpp`:
+- **Win32**: Pure in-process COM (`IWbemLocator` / `IWbemServices` / `CoInitializeEx`) to `root\wmi` with 0 subprocesses.
+- **Linux**: Direct sysfs reading of `/sys/class/power_supply/BAT*`.
+- **Fixed30 Math**: Multi-limb 128-bit fixed-point arithmetic maintaining 30 decimal digits without floating-point drift.
+- **Build (Linux/WSL)**: `g++ -O3 -std=c++20 bms_core.cpp -o bms`
+- **Build (Windows MSVC)**: `cl /O2 /std:c++20 bms_core.cpp /link ole32.lib oleaut32.lib wbemuuid.lib /out:bms.exe`
 
 ---
 

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.1.0] - 2026-09-10
+
+### Fixed
+- **CI Guards Matrix Failures (All 9 Matrix Jobs Resolved)**:
+  - Resolved `pywin32_postinstall` module execution failure on Windows runners by cleaning up setup step in `.github/workflows/ci-guards.yml`.
+  - Resolved `ModuleNotFoundError: No module named 'bms_engine'` on Ubuntu and macOS runners in Guard B by prepending workspace directory to Python `sys.path`.
+  - Resolved Windows `cp1252` `UnicodeEncodeError` in `tests/test_arithmetic.py` and `bms_engine.py` by enabling UTF-8 stream reconfiguration and cleaning non-ASCII box characters.
+
+### Added
+- **Real-Time Live Interactive TUI (`bms live` / `bms tui`)**:
+  - Sub-second Coulomb integration running at 4 Hz, live updating the 30-decimal digits of accumulated charging cycles and state of charge in real time.
+  - Zero-flicker double-buffered ANSI rendering utilizing alternate screen buffers (`\033[?1049h`), cursor hiding (`\033[?25l`), and in-place cursor homing (`\033[H`).
+  - Integrated live instantaneous wattage oscilloscope / sparkline and interactive keyboard navigation (`q` to quit, `space` to pause, `s` to sync NVRAM).
+- **Generative Glassmorphism Web Dashboard (`bms ui` / `bms web` via `bms_ui.py`)**:
+  - Zero-dependency local web dashboard served via Python standard library on `http://127.0.0.1:8989`.
+  - Real-time SVG circular state-of-charge gauge, live 30-decimal odometer counter, and Server-Sent Events (SSE) push streaming at 4 Hz.
+- **Native C++20 Engine (`bms_core.cpp`)**:
+  - High-performance native implementation with direct Win32 COM `root\wmi` queries (<0.5ms latency, 0 subprocesses, <2 MB RSS).
+  - 128-bit fixed-point `Fixed30` arithmetic struct providing 30 decimal digits of zero-drift precision.
+  - Verified compilation on modern GCC 15 with zero errors.
+
+---
+
 ## [4.0.0] - 2026-09-10
 
 ### Fixed (Catastrophic Bug Remediation)

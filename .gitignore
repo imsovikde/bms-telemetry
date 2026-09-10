@@ -17,3 +17,11 @@ BmsWipeSim/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Compiled Binaries
+*.exe
+*.elf
+*.o
+*.obj
+bms_cpp_linux
+bms
