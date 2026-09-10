@@ -18,6 +18,7 @@ Usage:
 import sys
 import os
 import json
+import math
 import time
 import webbrowser
 import threading
@@ -173,10 +174,12 @@ def build_historical_dataset(preset="24h", start_ts=None, end_ts=None, limit=200
             cap_after = float(ev.get("capacity_after") or ev.get("capacity_at_boot") or full_cap)
             d_cyc = float(ev.get("delta_cycles") or 0.0)
             soc_val = (cap_after / full_cap) * 100.0 if full_cap > 0 else 100.0
+            soc_ratio = max(0.0, min(1.0, soc_val / 100.0))
+            v_point = round(9600.0 + 3000.0 * (0.05 * math.sqrt(soc_ratio) + 0.70 * soc_ratio + 0.25 * (soc_ratio ** 2)), 1)
             event_points.append({
                 "timestamp": dt.isoformat(),
                 "epoch_ms": int(ep * 1000),
-                "voltage_mv": nom_v,
+                "voltage_mv": v_point,
                 "current_ma": 0.0,
                 "power_mw": 0.0,
                 "soc_pct": round(min(100.0, soc_val), 3),
@@ -208,13 +211,16 @@ def build_historical_dataset(preset="24h", start_ts=None, end_ts=None, limit=200
             t_sim = start_epoch + (i * dt_step)
             frac = i / float(steps)
             sim_cyc = cur_cycles - (1.0 - frac) * 0.04
+            sim_soc = max(10.0, cur_soc - (1.0 - frac) * 3.0)
+            s_ratio = max(0.0, min(1.0, sim_soc / 100.0))
+            v_sim = round(9600.0 + 3000.0 * (0.05 * math.sqrt(s_ratio) + 0.70 * s_ratio + 0.25 * (s_ratio ** 2)) + (12.0 if i % 2 == 0 else -8.0), 1)
             points.append({
                 "timestamp": datetime.fromtimestamp(t_sim, tz=timezone.utc).isoformat(),
                 "epoch_ms": int(t_sim * 1000),
-                "voltage_mv": nom_v + 50.0 * (1.0 if i % 4 != 0 else -1.0),
+                "voltage_mv": v_sim,
                 "current_ma": 0.0,
                 "power_mw": 0.0,
-                "soc_pct": round(cur_soc, 3),
+                "soc_pct": round(sim_soc, 3),
                 "temperature_c": 31.5,
                 "virtual_health_pct": round(cur_health, 3),
                 "degradation_loss_pct": round(float(state.get("cycle_degradation_loss_pct") or 0.0), 4),
@@ -2056,10 +2062,36 @@ class BMSHandler(BaseHTTPRequestHandler):
             telem = engine.get_telemetry()
             state = engine.process_telemetry_and_update_state(telem, state, persist=False)
             _record_telemetry_sample(telem, state)
+
+            t_diag = diagnostics.get_thermal_diagnostics()
+            t_data = t_diag.read_thermals()
+            p_eng = diagnostics.get_process_attribution_engine()
+            chg_rate = telem.get("charge_rate_mw", 0)
+            dis_rate = telem.get("discharge_rate_mw", 0)
+            net_mw = chg_rate if telem.get("charging", False) else -dis_rate
+            top_procs = p_eng.sample_attribution(system_power_mw=net_mw, is_charging=telem.get("charging", False))
+            cpu_pct = max(5.0, min(100.0, float(t_data.get("cpu_package_temp_c", 45.0) - 36.0) * (100.0 / 44.0)))
+            disk_rate = sum(p.get("disk_bytes", 0) for p in top_procs)
+            gpu_rate = sum(p.get("gpu_pct", 0.0) for p in top_procs)
+            audio_active = getattr(p_eng, "audio_active_overall", False)
+            subsystems = diagnostics.SubsystemHardwarePower.calculate_subsystems(
+                battery_rate_mw=abs(net_mw),
+                is_charging=telem.get("charging", False),
+                cpu_load_pct=cpu_pct,
+                gpu_load_pct=gpu_rate,
+                disk_bytes_sec=disk_rate,
+                audio_active=audio_active
+            )
+            bms_overhead = diagnostics.get_bms_self_telemetry_overhead()
+
             payload = {
                 "timestamp_utc": time.time(),
                 "telemetry": telem,
                 "state": state,
+                "thermals": t_data,
+                "subsystems": subsystems,
+                "top_processes": top_procs,
+                "bms_overhead": bms_overhead,
                 "hardware_identity": {
                     "master_key_fingerprint": engine.HARDWARE_KEY_HEX[:16],
                     "motherboard_uuid": engine.MOTHERBOARD_UUID,
@@ -2107,6 +2139,45 @@ class BMSHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "success", "processes": procs}).encode("utf-8"))
             except Exception as exc:
                 self.send_error(500, f"Process attribution error: {exc}")
+        elif path == "/api/subsystems":
+            try:
+                telem = engine.get_telemetry()
+                chg_mw = telem.get("charge_rate_mw", 0.0) or 0.0
+                dis_mw = telem.get("discharge_rate_mw", 0.0) or 0.0
+                net_mw = float(chg_mw) if telem.get("charging") else (-float(dis_mw) if telem.get("discharging") else 0.0)
+                t_diag = diagnostics.get_thermal_diagnostics()
+                t_data = t_diag.read_thermals()
+                cpu_pct = max(5.0, min(100.0, float(t_data.get("cpu_package_temp_c", 45.0) - 36.0) * (100.0 / 44.0)))
+                p_eng = diagnostics.get_process_attribution_engine()
+                cached_procs = p_eng.sample_attribution(system_power_mw=net_mw, is_charging=telem.get("charging", False))
+                disk_rate = sum(p.get("disk_bytes", 0) for p in cached_procs)
+                gpu_rate = sum(p.get("gpu_pct", 0.0) for p in cached_procs)
+                audio_active = getattr(p_eng, "audio_active_overall", False)
+                subsystems = diagnostics.SubsystemHardwarePower.calculate_subsystems(
+                    battery_rate_mw=abs(net_mw),
+                    is_charging=telem.get("charging", False),
+                    cpu_load_pct=cpu_pct,
+                    gpu_load_pct=gpu_rate,
+                    disk_bytes_sec=disk_rate,
+                    audio_active=audio_active
+                )
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "subsystems": subsystems}).encode("utf-8"))
+            except Exception as exc:
+                self.send_error(500, f"Subsystems error: {exc}")
+        elif path == "/api/bms-overhead":
+            try:
+                ov = diagnostics.get_bms_self_telemetry_overhead()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "bms_overhead": ov}).encode("utf-8"))
+            except Exception as exc:
+                self.send_error(500, f"BMS overhead error: {exc}")
         elif path == "/api/stream":
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
@@ -2187,13 +2258,32 @@ class BMSHandler(BaseHTTPRequestHandler):
                         except Exception:
                             pass
 
+                    # Calculate hardware subsystem powers (CPU, GPU, Display, Speaker/Audio, NVMe, RAM, Battery)
+                    cpu_pct = max(5.0, min(100.0, float(t_data.get("cpu_package_temp_c", 45.0) - 36.0) * (100.0 / 44.0)))
+                    disk_rate = sum(p.get("disk_bytes", 0) for p in cached_procs)
+                    gpu_rate = sum(p.get("gpu_pct", 0.0) for p in cached_procs)
+                    audio_active = getattr(p_eng, "audio_active_overall", False)
+                    subsystems = diagnostics.SubsystemHardwarePower.calculate_subsystems(
+                        battery_rate_mw=abs(net_mw),
+                        is_charging=telem.get("charging", False),
+                        cpu_load_pct=cpu_pct,
+                        gpu_load_pct=gpu_rate,
+                        disk_bytes_sec=disk_rate,
+                        audio_active=audio_active
+                    )
+
+                    # Measure BMS self-telemetry resource overhead
+                    bms_overhead = diagnostics.get_bms_self_telemetry_overhead()
+
                     _record_telemetry_sample(telem, state)
 
                     payload = {
                         "telemetry": telem,
                         "state": state,
                         "thermals": t_data,
+                        "subsystems": subsystems,
                         "top_processes": cached_procs,
+                        "bms_overhead": bms_overhead,
                         "hardware_identity": {
                             "master_key_fingerprint": engine.HARDWARE_KEY_HEX[:16]
                         }

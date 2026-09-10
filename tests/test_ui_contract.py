@@ -166,6 +166,21 @@ class TestUIFrontendContract(unittest.TestCase):
             data = json.loads(resp.read().decode("utf-8"))
             self.assertEqual(data.get("format"), "BMS_LIFETIME_ARCHIVE")
 
+        # /api/subsystems
+        with urlopen(f"{self.base_url}/api/subsystems", timeout=3.0) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertEqual(data.get("status"), "success")
+            self.assertIn("subsystems", data)
+
+        # /api/bms-overhead
+        with urlopen(f"{self.base_url}/api/bms-overhead", timeout=3.0) as resp:
+            self.assertEqual(resp.status, 200)
+            data = json.loads(resp.read().decode("utf-8"))
+            self.assertEqual(data.get("status"), "success")
+            self.assertIn("bms_overhead", data)
+            self.assertIn("pid", data["bms_overhead"])
+
     def test_08_path_traversal_protection(self):
         """Verify directory traversal is strictly blocked."""
         traversal_urls = [
