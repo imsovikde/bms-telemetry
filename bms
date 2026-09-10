@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Universal BMS cross-platform launcher for Linux / macOS / WSL
+set -e
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+
+if [ "$1" = "ui" ] || [ "$1" = "web" ]; then
+    python3 "$DIR/bms_engine.py" ui
+elif [ "$1" = "cpp" ]; then
+    if [ ! -f "$DIR/bms_core" ]; then
+        echo "[*] Compiling native C++20 engine..."
+        g++ -O3 -std=c++20 "$DIR/bms_core.cpp" -o "$DIR/bms_core"
+    fi
+    exec "$DIR/bms_core" "${@:2}"
+else
+    exec python3 "$DIR/bms_engine.py" "$@"
+fi

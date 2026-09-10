@@ -23,5 +23,4 @@ desktop.ini
 *.elf
 *.o
 *.obj
-bms_cpp_linux
-bms
+bms_core
