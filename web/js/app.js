@@ -51,12 +51,21 @@ class BmsApplication {
       }
     });
 
-    // 4. Bind Export and Import Actions
+    // 4. Bind Export, Import, and Copy Actions
     const exportCsvBtn = document.getElementById("btn-export-csv");
     if (exportCsvBtn) exportCsvBtn.addEventListener("click", () => this.exportCsv());
 
+    const exportCsvGzBtn = document.getElementById("btn-export-csv-gz");
+    if (exportCsvGzBtn) exportCsvGzBtn.addEventListener("click", () => this.exportCsvGz());
+
     const exportBtn = document.getElementById("btn-export");
     if (exportBtn) exportBtn.addEventListener("click", () => this.exportArchive());
+
+    const exportJsonGzBtn = document.getElementById("btn-export-json-gz");
+    if (exportJsonGzBtn) exportJsonGzBtn.addEventListener("click", () => this.exportJsonGz());
+
+    const copyAllProcsBtn = document.getElementById("btn-copy-all-procs");
+    if (copyAllProcsBtn) copyAllProcsBtn.addEventListener("click", () => this.copyAllProcesses());
 
     const importBtn = document.getElementById("btn-import");
     const fileInput = document.getElementById("import-file-input");
@@ -64,6 +73,9 @@ class BmsApplication {
       importBtn.addEventListener("click", () => fileInput.click());
       fileInput.addEventListener("change", (e) => this.handleFileImport(e));
     }
+
+    // Bind universal click-to-copy on cards and rows
+    this.bindClickToCopyErgonomics();
 
     // 5. Initial History Query and SSE Connection
     this.fetchHistory();
@@ -424,16 +436,17 @@ class BmsApplication {
 
     // 10. Process Power & Resource Attribution Update
     if (topProcs && Array.isArray(topProcs) && topProcs.length > 0) {
+      this.latestProcesses = topProcs;
       const totalPowerW = topProcs.reduce((acc, p) => acc + (p.power_watts || 0), 0);
       const dynBadge = document.getElementById("dynamic-power-val");
       if (dynBadge) {
-        dynBadge.textContent = `${totalPowerW.toFixed(2)} W DYNAMIC COMPUTE ATTRIBUTED`;
+        dynBadge.textContent = `${totalPowerW.toFixed(2)} W DYNAMIC COMPUTE ATTRIBUTED (${topProcs.length} PROCESSES)`;
       }
 
       const procTbody = document.getElementById("proc-tbody");
       if (procTbody) {
         procTbody.innerHTML = topProcs.map((p, idx) => `
-          <tr>
+          <tr class="proc-row-copyable" data-pid="${p.pid}" title="Click row to copy process stats">
             <td class="proc-rank">#${idx + 1}</td>
             <td><span class="proc-name-badge">${p.name}</span><span class="proc-pid">PID ${p.pid}</span></td>
             <td><span class="badge-chip badge-idle badge-xs">${p.hardware_subsystem || "CPU Compute"}</span></td>
@@ -441,7 +454,8 @@ class BmsApplication {
             <td>${p.gpu_pct ? p.gpu_pct.toFixed(1) : "0.0"}%</td>
             <td>${p.power_watts ? p.power_watts.toFixed(3) : "0.000"} W</td>
             <td>${p.power_share_pct ? p.power_share_pct.toFixed(1) : "0.0"}%</td>
-            <td>${p.accumulated_energy_mwh ? p.accumulated_energy_mwh.toFixed(3) : "0.000"} mWh</td>
+            <td>${p.accumulated_energy_mwh ? p.accumulated_energy_mwh.toFixed(4) : "0.0000"} mWh</td>
+            <td><button type="button" class="btn-copy-mini btn-copy-row" data-pid="${p.pid}" title="Copy process telemetry">COPY</button></td>
           </tr>
         `).join("");
       }
@@ -561,6 +575,19 @@ class BmsApplication {
     }, 800);
   }
 
+  exportCsvGz() {
+    showToast("Preparing streaming compressed CSV export (.csv.gz)...");
+    const a = document.createElement("a");
+    a.href = "/api/export/csv.gz";
+    a.download = `bms_telemetry_history_${new Date().toISOString().replace(/[:.]/g, "-")}.csv.gz`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => {
+      showToast("Compressed CSV archive (.csv.gz) download initiated!");
+    }, 800);
+  }
+
   exportArchive() {
     showToast("Preparing full untruncated lifetime telemetry archive...");
     const a = document.createElement("a");
@@ -572,6 +599,119 @@ class BmsApplication {
     setTimeout(() => {
       showToast("Lifetime telemetry archive exported successfully!");
     }, 800);
+  }
+
+  exportJsonGz() {
+    showToast("Preparing streaming compressed lifetime JSON export (.json.gz)...");
+    const a = document.createElement("a");
+    a.href = "/api/export/json.gz";
+    a.download = `bms_lifetime_telemetry_${new Date().toISOString().replace(/[:.]/g, "-")}.json.gz`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => {
+      showToast("Compressed JSON archive (.json.gz) download initiated!");
+    }, 800);
+  }
+
+  copyAllProcesses() {
+    if (!this.latestProcesses || !this.latestProcesses.length) {
+      showToast("No active process attribution data available to copy.", true);
+      return;
+    }
+    const lines = [
+      "=== BMS PROCESS POWER & ENERGY ATTRIBUTION REPORT ===",
+      `Generated: ${new Date().toISOString()}`,
+      `Total Active Processes: ${this.latestProcesses.length}`,
+      "Rank\tPID\tProcess Name\tSubsystem\tCPU %\tGPU %\tPower (W)\tShare %\tEnergy (mWh)",
+      ...this.latestProcesses.map((p, idx) => 
+        `#${idx + 1}\t${p.pid}\t${p.name}\t${p.hardware_subsystem || "CPU Compute"}\t${p.cpu_pct ? p.cpu_pct.toFixed(1) : "0.0"}%\t${p.gpu_pct ? p.gpu_pct.toFixed(1) : "0.0"}%\t${p.power_watts ? p.power_watts.toFixed(3) : "0.000"} W\t${p.power_share_pct ? p.power_share_pct.toFixed(1) : "0.0"}%\t${p.accumulated_energy_mwh ? p.accumulated_energy_mwh.toFixed(4) : "0.0000"} mWh`
+      )
+    ];
+    const text = lines.join("\n");
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(`Copied all ${this.latestProcesses.length} processes to clipboard!`);
+    }).catch(() => {
+      showToast("Clipboard copy failed.", true);
+    });
+  }
+
+  bindClickToCopyErgonomics() {
+    // 1. Process Table Row Click and Action Button
+    const procTbody = document.getElementById("proc-tbody");
+    if (procTbody) {
+      procTbody.addEventListener("click", (e) => {
+        const row = e.target.closest("tr");
+        if (!row || !this.latestProcesses) return;
+        const pid = row.dataset.pid;
+        const proc = this.latestProcesses.find((p) => String(p.pid) === String(pid));
+        if (proc) {
+          const summary = `${proc.name} (PID ${proc.pid}) | Subsystem: ${proc.hardware_subsystem || "CPU"} | CPU: ${proc.cpu_pct ? proc.cpu_pct.toFixed(1) : "0.0"}% | GPU: ${proc.gpu_pct ? proc.gpu_pct.toFixed(1) : "0.0"}% | Power: ${proc.power_watts ? proc.power_watts.toFixed(3) : "0.000"} W (${proc.power_mw ? proc.power_mw.toFixed(1) : "0.0"} mW) | Dynamic Share: ${proc.power_share_pct ? proc.power_share_pct.toFixed(1) : "0.0"}% | Energy: ${proc.accumulated_energy_mwh ? proc.accumulated_energy_mwh.toFixed(4) : "0.0000"} mWh`;
+          navigator.clipboard.writeText(summary).then(() => {
+            showToast(`Copied [${proc.name}]: ${proc.power_watts ? proc.power_watts.toFixed(3) : "0.000"} W`);
+          }).catch(() => {
+            showToast("Clipboard copy failed.", true);
+          });
+        }
+      });
+    }
+
+    // 2. Universal Delegated Click-to-Copy across all .card-copyable elements
+    document.addEventListener("click", (e) => {
+      const card = e.target.closest(".card-copyable");
+      if (!card || e.target.closest("button") || e.target.closest("input") || e.target.closest("a")) return;
+
+      let textToCopy = "";
+      let label = "";
+
+      if (card.classList.contains("kpi-card")) {
+        const titleEl = card.querySelector(".kpi-label span");
+        const valEl = card.querySelector(".kpi-num") || card.querySelector(".capacity-value") || card.querySelector("#gauge-pct");
+        label = titleEl ? titleEl.textContent.trim() : "Metric";
+        const val = valEl ? valEl.textContent.trim() : "";
+        textToCopy = `${label}: ${val}`;
+      } else if (card.classList.contains("reg-block")) {
+        const titleEl = card.querySelector(".reg-label span");
+        const valEl = card.querySelector(".reg-val-30");
+        label = titleEl ? titleEl.textContent.trim() : "Register";
+        const val = valEl ? valEl.textContent.trim() : "";
+        textToCopy = `${label}: ${val}`;
+      } else if (card.classList.contains("thermal-kpi-block")) {
+        const titleEl = card.querySelector(".kpi-label span");
+        const valEl = card.querySelector(".kpi-num");
+        label = titleEl ? titleEl.textContent.trim() : "Thermal";
+        const val = valEl ? valEl.textContent.trim() : "";
+        textToCopy = `${label}: ${val}`;
+      } else if (card.classList.contains("core-chip")) {
+        const labelEl = card.querySelector(".core-label");
+        const tempEl = card.querySelector(".core-temp");
+        label = labelEl ? labelEl.textContent.trim() : "Core";
+        const val = tempEl ? tempEl.textContent.trim() : "";
+        textToCopy = `${label}: ${val}`;
+      } else if (card.classList.contains("sub-card")) {
+        const nameEl = card.querySelector(".sub-name");
+        const valEl = card.querySelector(".sub-val");
+        const pctEl = card.querySelector(".sub-pct");
+        label = nameEl ? nameEl.textContent.trim() : "Subsystem";
+        const val = valEl ? valEl.textContent.trim() : "";
+        const pct = pctEl ? ` (${pctEl.textContent.trim()})` : "";
+        textToCopy = `${label}: ${val}${pct}`;
+      } else if (card.classList.contains("card-hw-banner")) {
+        textToCopy = card.innerText.replace(/\s+/g, " ").trim();
+        label = "Hardware Link";
+      } else if (card.classList.contains("bms-overhead-banner")) {
+        textToCopy = card.innerText.replace(/\s+/g, " ").trim();
+        label = "BMS Overhead";
+      }
+
+      if (textToCopy) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          showToast(`Copied to clipboard: ${textToCopy.slice(0, 60)}${textToCopy.length > 60 ? "..." : ""}`);
+        }).catch(() => {
+          showToast("Clipboard copy failed.", true);
+        });
+      }
+    });
   }
 
   handleFileImport(event) {

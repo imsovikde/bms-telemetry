@@ -343,7 +343,37 @@ header.cockpit-topbar {
 
 .proc-table-wrap {
   width: 100%;
+  max-height: 520px;
+  overflow-y: auto;
   overflow-x: auto;
+  position: relative;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) var(--card);
+}
+
+.proc-table-wrap::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  display: block !important;
+}
+
+.proc-table-wrap::-webkit-scrollbar-track {
+  background: var(--card);
+}
+
+.proc-table-wrap::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+.proc-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--card);
+  box-shadow: 0 1px 0 var(--border);
 }
 
 /* 6. Dynamic Live Telemetry Activity Stream */

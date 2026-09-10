@@ -1200,3 +1200,72 @@
   color: var(--safe);
 }
 
+/* Universal Click-to-Copy and Mini Action Ergonomics */
+.card-copyable {
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card-copyable:hover {
+  border-color: var(--border-strong) !important;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.12);
+}
+
+.card-copyable:active {
+  transform: scale(0.99);
+}
+
+.proc-row-copyable {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.proc-row-copyable:hover td {
+  background: var(--card-hover) !important;
+}
+
+.btn-copy-mini {
+  appearance: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--secondary-foreground);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  outline: none;
+  user-select: none;
+}
+
+.btn-copy-mini:hover {
+  background: var(--card-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+}
+
+.btn-copy-mini:active {
+  transform: scale(0.95);
+}
+
+.bms-btn-gz {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.35);
+  color: #a78bfa;
+}
+
+.bms-btn-gz:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: #a78bfa;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.25);
+}
+
+

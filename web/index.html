@@ -82,6 +82,14 @@
         EXPORT CSV
       </button>
 
+      <button type="button" class="bms-btn bms-btn-gz" id="btn-export-csv-gz" title="Export compressed streaming time-series CSV (.csv.gz)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        CSV.GZ
+      </button>
+
       <button type="button" class="bms-btn bms-btn-primary" id="btn-export" title="Export complete untruncated lifetime history JSON">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -89,6 +97,14 @@
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
         EXPORT JSON
+      </button>
+
+      <button type="button" class="bms-btn bms-btn-gz" id="btn-export-json-gz" title="Export compressed streaming lifetime JSON (.json.gz)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+        </svg>
+        JSON.GZ
       </button>
 
       <button type="button" class="bms-btn bms-btn-safe" id="btn-import" title="Import and restore lifetime telemetry archive">
@@ -104,7 +120,7 @@
   </header>
 
   <!-- 2. Hardware Glance Ribbon -->
-  <div class="card-hw-banner">
+  <div class="card-hw-banner card-copyable" title="Click to copy hardware link telemetry">
     <div class="hw-left-group">
       <span id="hw-pulse-dot" class="pulse-dot pulse-dot-safe"></span>
       <div class="hw-info-col">
@@ -130,7 +146,7 @@
   </div>
 
   <!-- 2.5 BMS Telemetry Self-Resource Overhead Ribbon -->
-  <div class="bms-overhead-banner">
+  <div class="bms-overhead-banner card-copyable" title="Click to copy BMS self-resource overhead">
     <div class="bms-overhead-left">
       <span class="pulse-dot pulse-dot-safe"></span>
       <span>BMS TELEMETRY SELF-RESOURCE CONSUMPTION</span>
@@ -316,7 +332,7 @@
   <!-- 4. Key Metrics Bento Grid -->
   <section class="bento-kpi-strip">
     <!-- Card 1: State of Charge -->
-    <div class="kpi-card">
+    <div class="kpi-card card-copyable" title="Click to copy State of Charge">
       <div class="kpi-label">
         <span>State of Charge</span>
         <span class="badge-chip badge-charging badge-xs" id="kpi-soc-badge">LIVE</span>
@@ -337,7 +353,7 @@
     </div>
 
     <!-- Card 2: Active Power Flow -->
-    <div class="kpi-card">
+    <div class="kpi-card card-copyable" title="Click to copy Active Power Flow">
       <div class="kpi-label">
         <span>Active Power Flow</span>
         <span class="badge-chip badge-idle badge-xs">TELEMETRY</span>
@@ -347,7 +363,7 @@
     </div>
 
     <!-- Card 3: Cycle Counter -->
-    <div class="kpi-card">
+    <div class="kpi-card card-copyable" title="Click to copy Cycle Count">
       <div class="kpi-label">
         <span>Cycle Counter</span>
         <span class="badge-chip badge-idle badge-xs">ZERO-DRIFT</span>
@@ -357,7 +373,7 @@
     </div>
 
     <!-- Card 4: Electrochemical Health (SoH) -->
-    <div class="kpi-card">
+    <div class="kpi-card card-copyable" title="Click to copy Electrochemical Health">
       <div class="kpi-label">
         <span>Electrochemical Health</span>
         <span class="badge-chip badge-idle badge-xs">SOH MODEL</span>
@@ -367,7 +383,7 @@
     </div>
 
     <!-- Card 5: Pack Voltage & AC Mains -->
-    <div class="kpi-card">
+    <div class="kpi-card card-copyable" title="Click to copy Pack Voltage">
       <div class="kpi-label">
         <span>Pack Voltage &amp; Bus</span>
         <span class="badge-chip badge-idle badge-xs">3S PACK</span>
@@ -381,21 +397,21 @@
 
   <!-- 5. Scientific 30-Decimal Laboratory Deck -->
   <section class="card-registers">
-    <div class="reg-block">
+    <div class="reg-block card-copyable" title="Click to copy 30-decimal cycles">
       <div class="reg-label">
         <span>Accumulated Charging Cycles (30 Decimals)</span>
         <span class="reg-tag-safe">ZERO-DRIFT FIXED POINT</span>
       </div>
       <div id="cycles-30" class="reg-val-30">--</div>
     </div>
-    <div class="reg-block">
+    <div class="reg-block card-copyable" title="Click to copy 30-decimal SoC">
       <div class="reg-label">
         <span>Real-Time State of Charge Percentage (30 Decimals)</span>
         <span class="reg-tag-info">CONTINUOUS INTEGRATION</span>
       </div>
       <div id="soc-30" class="reg-val-30">--</div>
     </div>
-    <div class="reg-block">
+    <div class="reg-block card-copyable" title="Click to copy 30-decimal Health">
       <div class="reg-label">
         <span>Electrochemical Virtual Health Percentage (30 Decimals)</span>
         <span class="reg-tag-accent">SCIENTIFIC DEGRADATION</span>
@@ -418,7 +434,7 @@
     </div>
 
     <div class="thermals-summary-strip">
-      <div class="thermal-kpi-block">
+      <div class="thermal-kpi-block card-copyable" title="Click to copy CPU package temperature">
         <div class="kpi-label">
           <span>CPU Package Temperature</span>
           <span class="badge-chip badge-idle badge-xs">DTS SENSOR</span>
@@ -427,7 +443,7 @@
         <div class="kpi-sub" id="stat-thermal-source">Intel Core i5-13500H Subsystem</div>
       </div>
 
-      <div class="thermal-kpi-block">
+      <div class="thermal-kpi-block card-copyable" title="Click to copy Distance to TjMax Headroom">
         <div class="kpi-label">
           <span>Distance to TjMax Headroom</span>
           <span class="badge-chip badge-charging badge-xs" id="tjmax-tag">SAFETY MARGIN</span>
@@ -439,7 +455,7 @@
         </div>
       </div>
 
-      <div class="thermal-kpi-block">
+      <div class="thermal-kpi-block card-copyable" title="Click to copy Processor Performance Limit">
         <div class="kpi-label">
           <span>Processor Performance Limit</span>
           <span class="badge-chip badge-idle badge-xs">DUTY CYCLE</span>
@@ -450,18 +466,18 @@
     </div>
 
     <div class="core-heatmap-grid" id="core-heatmap-grid">
-      <div class="core-chip" id="chip-p1"><span class="core-label">P-Core #1</span><span class="core-temp" id="val-p1">--.- &deg;C</span></div>
-      <div class="core-chip" id="chip-p2"><span class="core-label">P-Core #2</span><span class="core-temp" id="val-p2">--.- &deg;C</span></div>
-      <div class="core-chip" id="chip-p3"><span class="core-label">P-Core #3</span><span class="core-temp" id="val-p3">--.- &deg;C</span></div>
-      <div class="core-chip" id="chip-p4"><span class="core-label">P-Core #4</span><span class="core-temp" id="val-p4">--.- &deg;C</span></div>
-      <div class="core-chip" id="chip-e1"><span class="core-label">E-Core #1</span><span class="core-temp" id="val-e1">--.- &deg;C</span></div>
-      <div class="core-chip" id="chip-e2"><span class="core-label">E-Core #2</span><span class="core-temp" id="val-e2">--.- &deg;C</span></div>
-      <div class="core-chip" id="chip-e3"><span class="core-label">E-Core #3</span><span class="core-temp" id="val-e3">--.- &deg;C</span></div>
-      <div class="core-chip" id="chip-e4"><span class="core-label">E-Core #4</span><span class="core-temp" id="val-e4">--.- &deg;C</span></div>
-      <div class="core-chip" id="chip-e5"><span class="core-label">E-Core #5</span><span class="core-temp" id="val-e5">--.- &deg;C</span></div>
-      <div class="core-chip" id="chip-e6"><span class="core-label">E-Core #6</span><span class="core-temp" id="val-e6">--.- &deg;C</span></div>
-      <div class="core-chip" id="chip-e7"><span class="core-label">E-Core #7</span><span class="core-temp" id="val-e7">--.- &deg;C</span></div>
-      <div class="core-chip" id="chip-e8"><span class="core-label">E-Core #8</span><span class="core-temp" id="val-e8">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-p1" title="Click to copy P-Core #1 temp"><span class="core-label">P-Core #1</span><span class="core-temp" id="val-p1">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-p2" title="Click to copy P-Core #2 temp"><span class="core-label">P-Core #2</span><span class="core-temp" id="val-p2">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-p3" title="Click to copy P-Core #3 temp"><span class="core-label">P-Core #3</span><span class="core-temp" id="val-p3">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-p4" title="Click to copy P-Core #4 temp"><span class="core-label">P-Core #4</span><span class="core-temp" id="val-p4">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-e1" title="Click to copy E-Core #1 temp"><span class="core-label">E-Core #1</span><span class="core-temp" id="val-e1">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-e2" title="Click to copy E-Core #2 temp"><span class="core-label">E-Core #2</span><span class="core-temp" id="val-e2">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-e3" title="Click to copy E-Core #3 temp"><span class="core-label">E-Core #3</span><span class="core-temp" id="val-e3">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-e4" title="Click to copy E-Core #4 temp"><span class="core-label">E-Core #4</span><span class="core-temp" id="val-e4">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-e5" title="Click to copy E-Core #5 temp"><span class="core-label">E-Core #5</span><span class="core-temp" id="val-e5">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-e6" title="Click to copy E-Core #6 temp"><span class="core-label">E-Core #6</span><span class="core-temp" id="val-e6">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-e7" title="Click to copy E-Core #7 temp"><span class="core-label">E-Core #7</span><span class="core-temp" id="val-e7">--.- &deg;C</span></div>
+      <div class="core-chip card-copyable" id="chip-e8" title="Click to copy E-Core #8 temp"><span class="core-label">E-Core #8</span><span class="core-temp" id="val-e8">--.- &deg;C</span></div>
     </div>
   </section>
 
@@ -476,7 +492,7 @@
     </div>
 
     <div class="subsystem-grid">
-      <div class="sub-card">
+      <div class="sub-card card-copyable" title="Click to copy CPU Package power">
         <div class="sub-card-header">
           <span class="sub-name">CPU Package</span>
           <span class="sub-pct" id="sub-cpu-pct">--%</span>
@@ -485,7 +501,7 @@
         <div class="sub-sub">Intel Core i5-13500H Subsystem</div>
       </div>
 
-      <div class="sub-card">
+      <div class="sub-card card-copyable" title="Click to copy GPU Engine power">
         <div class="sub-card-header">
           <span class="sub-name">GPU Engine</span>
           <span class="sub-pct" id="sub-gpu-pct">--%</span>
@@ -494,7 +510,7 @@
         <div class="sub-sub">Intel Iris Xe 3D &amp; Video Decode</div>
       </div>
 
-      <div class="sub-card">
+      <div class="sub-card card-copyable" title="Click to copy Display & Backlight power">
         <div class="sub-card-header">
           <span class="sub-name">Display &amp; Backlight</span>
           <span class="sub-pct" id="sub-display-pct">--%</span>
@@ -503,7 +519,7 @@
         <div class="sub-sub">15.6" FHD IPS Panel Controller</div>
       </div>
 
-      <div class="sub-card">
+      <div class="sub-card card-copyable" title="Click to copy Speaker & Audio DSP power">
         <div class="sub-card-header">
           <span class="sub-name">Speaker &amp; Audio DSP</span>
           <span class="sub-pct" id="sub-audio-pct">--%</span>
@@ -512,7 +528,7 @@
         <div class="sub-sub" id="sub-audio-status">Class-D Amplifiers &amp; DSP</div>
       </div>
 
-      <div class="sub-card">
+      <div class="sub-card card-copyable" title="Click to copy PCIe NVMe Storage power">
         <div class="sub-card-header">
           <span class="sub-name">PCIe NVMe Storage</span>
           <span class="sub-pct" id="sub-storage-pct">--%</span>
@@ -521,7 +537,7 @@
         <div class="sub-sub">M.2 SSD Controller &amp; NAND</div>
       </div>
 
-      <div class="sub-card">
+      <div class="sub-card card-copyable" title="Click to copy LPDDR5 Memory power">
         <div class="sub-card-header">
           <span class="sub-name">LPDDR5 Memory</span>
           <span class="sub-pct" id="sub-ram-pct">--%</span>
@@ -530,7 +546,7 @@
         <div class="sub-sub">16GB System Memory Bus</div>
       </div>
 
-      <div class="sub-card">
+      <div class="sub-card card-copyable" title="Click to copy Fans & System Aux power">
         <div class="sub-card-header">
           <span class="sub-name">Fans &amp; System Aux</span>
           <span class="sub-pct" id="sub-aux-pct">--%</span>
@@ -539,7 +555,7 @@
         <div class="sub-sub">Cooling Fans, VRM &amp; Wi-Fi 6E</div>
       </div>
 
-      <div class="sub-card">
+      <div class="sub-card card-copyable" title="Click to copy Battery Net Flow power">
         <div class="sub-card-header">
           <span class="sub-name">Battery Net Flow</span>
           <span class="sub-pct" id="sub-bat-status">LIVE IOCTL</span>
@@ -557,7 +573,10 @@
         <span class="pulse-dot pulse-dot-safe"></span>
         <span class="ledger-title">PROCESS-LEVEL POWER &amp; RESOURCE ATTRIBUTION</span>
       </div>
-      <span class="badge-chip badge-idle badge-xs" id="dynamic-power-val">DYNAMIC COMPUTE ATTRIBUTED</span>
+      <div class="header-actions">
+        <span class="badge-chip badge-idle badge-xs" id="dynamic-power-val">DYNAMIC COMPUTE ATTRIBUTED</span>
+        <button type="button" class="bms-btn bms-btn-sm" id="btn-copy-all-procs" title="Copy entire active process table to clipboard">COPY ALL PROCESSES</button>
+      </div>
     </div>
 
     <div class="proc-stacked-bar-container">
@@ -576,11 +595,12 @@
             <th>Attributed Power</th>
             <th>Dynamic Share</th>
             <th>Accumulated Energy</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody id="proc-tbody">
           <tr>
-            <td colspan="8" class="ledger-empty">Awaiting process attribution sampling...</td>
+            <td colspan="9" class="ledger-empty">Awaiting process attribution sampling...</td>
           </tr>
         </tbody>
       </table>
