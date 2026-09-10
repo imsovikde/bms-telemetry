@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: ["main"]
 
-# ── Matrix: three OS × three Python versions ────────────────────────────────
+# ── Matrix: Ubuntu & Windows (macOS 10x halted to conserve quota) ──────
 jobs:
   ci-guards:
     name: "CI Guards · ${{ matrix.os }} · py${{ matrix.python }}"
@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
         python: ["3.10", "3.11", "3.12"]
 
     steps:
@@ -36,7 +36,7 @@ jobs:
           python -c "import win32serviceutil, win32com.client; print('pywin32 installed successfully')"
         shell: pwsh
 
-      # ── 4. Guard A: CLI Integrity ─────────────────────────────────────────
+      # ── 4. Guard A: CLI Integrity ──────────────────────────────────────────
       # bms status must exit 0 on all platforms (even without physical battery;
       # the engine gracefully falls back to stored state values on CI).
       - name: "Guard A: CLI Integrity — bms status exits 0"
@@ -44,7 +44,7 @@ jobs:
         env:
           BMS_CI: "1"
 
-      # ── 5. Guard B: Anti-Mock Guard ───────────────────────────────────────
+      # ── 5. Guard B: Anti-Mock Guard ────────────────────────────────────────
       # Verify real hardware ACPI driver query paths on all operating systems
       - name: "Guard B: Anti-Mock — real hardware ACPI drivers actively probed"
         run: python tests/test_antimock.py
@@ -53,13 +53,13 @@ jobs:
       - name: "Guard C: Arithmetic — unit tests (persist=False, no hardware)"
         run: python tests/test_arithmetic.py
 
-      # ── 7. Guard D: 100-Cycle Verification Suite ──────────────────────────
+      # ── 7. Guard D: 100-Cycle Verification Suite ───────────────────────────
       - name: "Guard D: 100-Cycle Engine Verification"
         run: python bms_engine.py test-100
         env:
           BMS_CI: "1"
 
-      # ── 8. Guard E: bms_service.py importable ─────────────────────────────
+      # ── 8. Guard E: bms_service.py importable ──────────────────────────────
       - name: "Guard E: bms_service.py importable on Windows"
         if: runner.os == 'Windows'
         run: python -c "import bms_service; print('bms_service importable')"
