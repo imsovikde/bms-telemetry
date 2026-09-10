@@ -16,6 +16,7 @@ import time
 import sqlite3
 import threading
 import csv
+import gzip
 import io
 import json
 from datetime import datetime, timezone
@@ -205,18 +206,25 @@ class BMSStorageEngine:
         self,
         start_epoch_ms: int,
         end_epoch_ms: int,
-        limit: int = 2000
+        limit: Optional[int] = None
     ) -> List[Dict[str, Any]]:
-        """Queries historical telemetry samples within time window."""
+        """Queries historical telemetry samples within time window. If limit is None or 0, returns all samples."""
         with self._lock:
             conn = self._get_connection()
             try:
-                cur = conn.execute("""
-                    SELECT * FROM telemetry_samples
-                    WHERE epoch_ms >= ? AND epoch_ms <= ?
-                    ORDER BY epoch_ms ASC
-                    LIMIT ?;
-                """, (start_epoch_ms, end_epoch_ms, limit))
+                if limit and limit > 0:
+                    cur = conn.execute("""
+                        SELECT * FROM telemetry_samples
+                        WHERE epoch_ms >= ? AND epoch_ms <= ?
+                        ORDER BY epoch_ms ASC
+                        LIMIT ?;
+                    """, (start_epoch_ms, end_epoch_ms, limit))
+                else:
+                    cur = conn.execute("""
+                        SELECT * FROM telemetry_samples
+                        WHERE epoch_ms >= ? AND epoch_ms <= ?
+                        ORDER BY epoch_ms ASC;
+                    """, (start_epoch_ms, end_epoch_ms))
                 rows = cur.fetchall()
                 return [dict(r) for r in rows]
             finally:
@@ -226,26 +234,96 @@ class BMSStorageEngine:
         self,
         start_epoch_ms: int,
         end_epoch_ms: int,
-        limit: int = 10
+        limit: Optional[int] = None
     ) -> List[Dict[str, Any]]:
-        """Returns aggregated top energy-consuming processes in the given window."""
+        """Returns aggregated energy-consuming processes in the given window. If limit is None or 0, returns all."""
         with self._lock:
             conn = self._get_connection()
             try:
-                cur = conn.execute("""
-                    SELECT process_name, pid,
-                           AVG(cpu_pct) as avg_cpu,
-                           AVG(gpu_pct) as avg_gpu,
-                           AVG(power_mw) as avg_power_mw,
-                           MAX(energy_mwh) as total_energy_mwh,
-                           AVG(share_pct) as avg_share
-                    FROM process_attribution_samples
-                    WHERE epoch_ms >= ? AND epoch_ms <= ?
-                    GROUP BY process_name, pid
-                    ORDER BY avg_power_mw DESC
-                    LIMIT ?;
-                """, (start_epoch_ms, end_epoch_ms, limit))
+                if limit and limit > 0:
+                    cur = conn.execute("""
+                        SELECT process_name, pid,
+                               AVG(cpu_pct) as avg_cpu,
+                               AVG(gpu_pct) as avg_gpu,
+                               AVG(power_mw) as avg_power_mw,
+                               MAX(energy_mwh) as total_energy_mwh,
+                               AVG(share_pct) as avg_share
+                        FROM process_attribution_samples
+                        WHERE epoch_ms >= ? AND epoch_ms <= ?
+                        GROUP BY process_name, pid
+                        ORDER BY avg_power_mw DESC
+                        LIMIT ?;
+                    """, (start_epoch_ms, end_epoch_ms, limit))
+                else:
+                    cur = conn.execute("""
+                        SELECT process_name, pid,
+                               AVG(cpu_pct) as avg_cpu,
+                               AVG(gpu_pct) as avg_gpu,
+                               AVG(power_mw) as avg_power_mw,
+                               MAX(energy_mwh) as total_energy_mwh,
+                               AVG(share_pct) as avg_share
+                        FROM process_attribution_samples
+                        WHERE epoch_ms >= ? AND epoch_ms <= ?
+                        GROUP BY process_name, pid
+                        ORDER BY avg_power_mw DESC;
+                    """, (start_epoch_ms, end_epoch_ms))
                 return [dict(r) for r in cur.fetchall()]
+            finally:
+                conn.close()
+
+    def record_s5_offline_event(
+        self,
+        event_type: str,
+        delta_mwh: float,
+        delta_cycles: str,
+        capacity_before: float,
+        capacity_after: float,
+        timestamp: Optional[str] = None
+    ):
+        """Records an immutable S5 offline charging or drain event directly into SQLite WAL."""
+        now_ms = int(time.time() * 1000)
+        ts = timestamp or datetime.now(timezone.utc).isoformat()
+        with self._lock:
+            conn = self._get_connection()
+            try:
+                with conn:
+                    conn.execute("""
+                        INSERT INTO telemetry_samples (
+                            timestamp, epoch_ms, voltage_mv, current_ma, power_mw,
+                            charging, discharging, power_online,
+                            remaining_capacity_mwh, full_charge_capacity_mwh, design_capacity_mwh,
+                            soc_pct, accumulated_cycles, virtual_health_pct,
+                            cpu_temp_c, cpu_headroom_c, event_type
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    """, (
+                        ts,
+                        now_ms,
+                        12500.0,
+                        0.0,
+                        delta_mwh,
+                        1 if "CHARGE" in event_type else 0,
+                        1 if "DRAIN" in event_type else 0,
+                        1 if "CHARGE" in event_type else 0,
+                        capacity_after,
+                        69993.0,
+                        69993.0,
+                        round((capacity_after / 69993.0) * 100.0, 2),
+                        str(delta_cycles),
+                        100.0,
+                        38.0,
+                        62.0,
+                        event_type
+                    ))
+                    conn.execute("""
+                        INSERT INTO hardware_alerts (timestamp, epoch_ms, alert_type, level, message)
+                        VALUES (?, ?, ?, ?, ?);
+                    """, (
+                        ts,
+                        now_ms,
+                        event_type,
+                        "INFO",
+                        f"S5 Offline Delta: {delta_mwh:+.1f} mWh ({delta_cycles} cycles). Before: {capacity_before:.1f} mWh, After: {capacity_after:.1f} mWh"
+                    ))
             finally:
                 conn.close()
 
@@ -254,7 +332,7 @@ class BMSStorageEngine:
         start_epoch_ms: int = 0,
         end_epoch_ms: Optional[int] = None
     ) -> Generator[str, None, None]:
-        """Streaming RFC-4180 CSV generator for high-speed downloads."""
+        """Streaming RFC-4180 CSV generator for high-speed downloads of complete lifetime telemetry."""
         if end_epoch_ms is None:
             end_epoch_ms = int(time.time() * 1000)
 
@@ -298,29 +376,107 @@ class BMSStorageEngine:
         finally:
             conn.close()
 
+    def export_csv_gz_stream(
+        self,
+        start_epoch_ms: int = 0,
+        end_epoch_ms: Optional[int] = None
+    ) -> Generator[bytes, None, None]:
+        """Streaming gzip-compressed RFC-4180 CSV generator for high-speed, compact downloads."""
+        buf = io.BytesIO()
+        with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+            for chunk in self.export_csv_stream(start_epoch_ms, end_epoch_ms):
+                gz.write(chunk.encode("utf-8"))
+                val = buf.getvalue()
+                if val:
+                    yield val
+                    buf.seek(0)
+                    buf.truncate(0)
+        rem = buf.getvalue()
+        if rem:
+            yield rem
+
     def export_json(
         self,
         start_epoch_ms: int = 0,
         end_epoch_ms: Optional[int] = None,
-        limit: int = 5000
+        limit: Optional[int] = None
     ) -> Dict[str, Any]:
-        """Comprehensive JSON export of historical telemetry and process profiles."""
+        """Comprehensive JSON export of all lifetime telemetry and process profiles without truncation."""
         if end_epoch_ms is None:
             end_epoch_ms = int(time.time() * 1000)
 
         points = self.query_telemetry(start_epoch_ms, end_epoch_ms, limit=limit)
-        procs = self.query_top_processes(start_epoch_ms, end_epoch_ms, limit=20)
+        procs = self.query_top_processes(start_epoch_ms, end_epoch_ms, limit=limit)
         return {
             "format": "BMS_LIFETIME_TELEMETRY_EXPORT_V2",
             "exported_at": datetime.now(timezone.utc).isoformat(),
             "time_window": {
                 "start_epoch_ms": start_epoch_ms,
                 "end_epoch_ms": end_epoch_ms,
-                "total_points": len(points)
+                "total_points": len(points),
+                "total_processes": len(procs)
             },
             "telemetry_points": points,
             "top_processes": procs
         }
+
+    def export_json_gz_stream(
+        self,
+        start_epoch_ms: int = 0,
+        end_epoch_ms: Optional[int] = None
+    ) -> Generator[bytes, None, None]:
+        """Streaming gzip-compressed JSON generator covering all lifetime telemetry with zero memory bloat."""
+        buf = io.BytesIO()
+        with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+            header = f'{{"format":"BMS_LIFETIME_TELEMETRY_EXPORT_V2","exported_at":"{datetime.now(timezone.utc).isoformat()}","telemetry_points":['
+            gz.write(header.encode("utf-8"))
+            val = buf.getvalue()
+            if val:
+                yield val
+                buf.seek(0)
+                buf.truncate(0)
+
+            conn = self._get_connection()
+            first = True
+            try:
+                cur = conn.execute("""
+                    SELECT * FROM telemetry_samples
+                    WHERE epoch_ms >= ? AND epoch_ms <= ?
+                    ORDER BY epoch_ms ASC;
+                """, (start_epoch_ms, end_epoch_ms or int(time.time() * 1000)))
+
+                while True:
+                    rows = cur.fetchmany(500)
+                    if not rows:
+                        break
+                    chunk_str = ""
+                    for r in rows:
+                        prefix = "" if first else ","
+                        first = False
+                        chunk_str += prefix + json.dumps(dict(r))
+                    gz.write(chunk_str.encode("utf-8"))
+                    val = buf.getvalue()
+                    if val:
+                        yield val
+                        buf.seek(0)
+                        buf.truncate(0)
+            finally:
+                conn.close()
+
+            # Append top processes aggregation
+            procs = self.query_top_processes(start_epoch_ms, end_epoch_ms or int(time.time() * 1000))
+            procs_json = json.dumps(procs)
+            footer = f'],"top_processes":{procs_json}}}'
+            gz.write(footer.encode("utf-8"))
+            val = buf.getvalue()
+            if val:
+                yield val
+                buf.seek(0)
+                buf.truncate(0)
+
+        rem = buf.getvalue()
+        if rem:
+            yield rem
 
     def import_json(self, archive: Dict[str, Any]) -> Dict[str, Any]:
         """Imports retrospective JSON archive into SQLite WAL with deduplication."""

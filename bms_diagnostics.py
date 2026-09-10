@@ -333,7 +333,7 @@ class ProcessPowerAttribution:
         self,
         system_power_mw: float,
         is_charging: bool = False,
-        top_n: int = 10
+        top_n: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Aggregates process metrics and projects proportional power consumption (mW).
@@ -437,9 +437,16 @@ class ProcessPowerAttribution:
             p["power_share_pct"] = round(weight * 100.0, 1)
             attributed_procs.append(p)
 
-        # Sort descending by instantaneous power
-        attributed_procs.sort(key=lambda x: x["power_mw"], reverse=True)
-        top_procs = attributed_procs[:top_n]
+        # Sort descending by instantaneous power and energy
+        attributed_procs.sort(key=lambda x: (x["power_mw"], x.get("accumulated_energy_mwh", 0)), reverse=True)
+        if top_n is not None and top_n > 0:
+            top_procs = attributed_procs[:top_n]
+        else:
+            active_procs = [
+                p for p in attributed_procs
+                if p["cpu_pct"] > 0.0 or p["gpu_pct"] > 0.0 or p.get("disk_bytes", 0) > 0 or p.get("accumulated_energy_mwh", 0) >= 0.0001 or p["power_mw"] >= 0.1
+            ]
+            top_procs = active_procs if active_procs else attributed_procs[:30]
 
         # Attach audio overall state
         self.audio_active_overall = audio_active_overall
