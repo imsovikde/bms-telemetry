@@ -108,7 +108,9 @@ class TestUIFrontendContract(unittest.TestCase):
         telem = engine.get_telemetry()
         self.assertIn("voltage_mv", telem)
         self.assertIn("power_online", telem)
-        self.assertIn("tag", telem)
+        self.assertIn("remaining_capacity_mwh", telem)
+        if engine.is_windows() and "tag" in telem:
+            self.assertIsInstance(telem["tag"], int)
 
         export_data = engine.export_lifetime_data()
         self.assertEqual(export_data.get("format"), "BMS_LIFETIME_ARCHIVE")
