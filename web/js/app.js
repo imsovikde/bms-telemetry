@@ -186,6 +186,29 @@ class BmsApplication {
     if (mwhRem) mwhRem.textContent = Math.round(telem.remaining_capacity_mwh).toLocaleString();
     if (mwhFcc) mwhFcc.textContent = Math.round(telem.full_charge_capacity_mwh).toLocaleString();
 
+    // Battery Life Remaining / Runtime
+    const statLifeRemaining = document.getElementById("stat-life-remaining");
+    if (statLifeRemaining) {
+      if (telem.discharging && disRate > 0) {
+        const totalMins = Math.round((telem.remaining_capacity_mwh / disRate) * 60);
+        const hrs = Math.floor(totalMins / 60);
+        const mins = totalMins % 60;
+        statLifeRemaining.textContent = `Est. Runtime: ${hrs}h ${mins}m (${(disRate / 1000).toFixed(1)}W load)`;
+      } else if (telem.charging && chgRate > 0) {
+        const diffMwh = Math.max(0, telem.full_charge_capacity_mwh - telem.remaining_capacity_mwh);
+        const totalMins = Math.round((diffMwh / chgRate) * 60);
+        const hrs = Math.floor(totalMins / 60);
+        const mins = totalMins % 60;
+        statLifeRemaining.textContent = `Est. Full Charge: ${hrs}h ${mins}m (+${(chgRate / 1000).toFixed(1)}W)`;
+      } else if (telem.power_online && isFull) {
+        statLifeRemaining.textContent = "AC Mains (Cells 100% Saturated)";
+      } else if (telem.power_online) {
+        statLifeRemaining.textContent = "AC Mains Connected (Standby)";
+      } else {
+        statLifeRemaining.textContent = "Standby (Zero Net Discharge)";
+      }
+    }
+
     // 4. Instantaneous KPIs
     const statVolt = document.getElementById("stat-volt");
     const statPower = document.getElementById("stat-power");
