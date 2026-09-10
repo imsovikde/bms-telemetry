@@ -26,3 +26,8 @@ desktop.ini
 bms_core
 testsprite_tests/tmp/
 testsprite_tests/tmp/config.json
+
+# Local Databases
+*.db
+*.db-wal
+*.db-shm
