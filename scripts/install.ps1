@@ -66,17 +66,22 @@ $RepoRoot   = Split-Path -Parent $ScriptDir
 $InstallDir = "C:\ProgramData\BMS"
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 
-$filesToDeploy = @("bms_engine.py", "bms_service.py")
+$filesToDeploy = @("bms_core.exe", "bms_core.cpp", "bms_engine.py", "bms_ui.py", "bms_storage.py", "bms_diagnostics.py", "bms_service.py", "bms_autostart.py")
 foreach ($f in $filesToDeploy) {
     $src = Join-Path $RepoRoot $f
-    if (-not (Test-Path $src)) {
-        Write-Host "[!] Source file not found: $src" -ForegroundColor Red
-        exit 1
+    if (Test-Path $src) {
+        Copy-Item $src (Join-Path $InstallDir $f) -Force
     }
-    Copy-Item $src (Join-Path $InstallDir $f) -Force
 }
 
-Write-Host "`n[+] Engine Deployed  → $InstallDir" -ForegroundColor Green
+# Deploy web/ directory
+$webSrc = Join-Path $RepoRoot "web"
+$webDst = Join-Path $InstallDir "web"
+if (Test-Path $webSrc) {
+    Copy-Item $webSrc $InstallDir -Recurse -Force
+}
+
+Write-Host "`n[+] Engine & Web UI Deployed -> $InstallDir" -ForegroundColor Green
 
 # ── 4. Global CLI Shims ─────────────────────────────────────────────────────
 $bmsCmd = "@echo off`r`npython.exe `"$InstallDir\bms_engine.py`" %*`r`n"
