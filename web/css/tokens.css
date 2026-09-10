@@ -1,0 +1,67 @@
+/**
+ * BMS Design Tokens - Shadcn Dark-First Industrial Theme
+ * Anti-AI-slop strict typography, calibrated contrast, zero browser scrollbars
+ */
+:root {
+  --background: #080c14;
+  --foreground: #f8fafc;
+  --card: #0d1424;
+  --card-foreground: #f8fafc;
+  --card-hover: #121c32;
+  --popover: #0d1424;
+  --popover-foreground: #f8fafc;
+  --primary: #00f0ff;
+  --primary-foreground: #080c14;
+  --secondary: #162238;
+  --secondary-foreground: #94a3b8;
+  --muted: #111a2e;
+  --muted-foreground: #64748b;
+  --accent: #19263e;
+  --accent-foreground: #f8fafc;
+  --destructive: #ef4444;
+  --destructive-foreground: #f8fafc;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(0, 240, 255, 0.25);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: rgba(0, 240, 255, 0.4);
+  --radius: 8px;
+
+  /* Semantic Status Indicators */
+  --safe: #10b981;
+  --safe-dim: rgba(16, 185, 129, 0.15);
+  --warn: #f59e0b;
+  --warn-dim: rgba(245, 158, 11, 0.15);
+  --danger: #ef4444;
+  --danger-dim: rgba(239, 68, 68, 0.15);
+  --cyan: #00f0ff;
+  --cyan-dim: rgba(0, 240, 255, 0.12);
+  --purple: #a855f7;
+  --purple-dim: rgba(168, 85, 247, 0.15);
+
+  /* Chart Metric Tokens */
+  --chart-power: #10b981;
+  --chart-voltage: #00f0ff;
+  --chart-soc: #3b82f6;
+  --chart-temp: #f59e0b;
+  --chart-health: #a855f7;
+  --chart-degrade: #ef4444;
+
+  /* Typography Stacks */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", monospace;
+}
+
+/* Total elimination of browser scrollbars */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

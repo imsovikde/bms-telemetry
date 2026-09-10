@@ -35,6 +35,21 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _HERE)
 import bms_engine as engine
 
+WEB_DIR = os.path.join(_HERE, "web")
+
+MIME_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".mjs": "application/javascript; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".ico": "image/x-icon",
+    ".woff2": "font/woff2",
+    ".woff": "font/woff",
+}
+
 # In-memory telemetry ring buffer for live historical resolution
 _TELEMETRY_RING_BUFFER = []
 _BUFFER_LOCK = threading.Lock()
@@ -1968,16 +1983,55 @@ class BMSHandler(BaseHTTPRequestHandler):
         # Silence standard HTTP access logging to keep terminal pristine
         pass
 
+    def serve_static(self, rel_path: str):
+        rel_path = rel_path.lstrip("/\\")
+        if not rel_path or rel_path == "index.html":
+            file_path = os.path.join(WEB_DIR, "index.html")
+        else:
+            file_path = os.path.join(WEB_DIR, rel_path)
+
+        # Path traversal guard: verify path is inside WEB_DIR
+        try:
+            resolved = os.path.realpath(file_path)
+            if not resolved.startswith(os.path.realpath(WEB_DIR)):
+                self.send_error(403, "Access Denied")
+                return
+        except Exception:
+            self.send_error(400, "Bad Request")
+            return
+
+        if not os.path.isfile(resolved):
+            if rel_path in ("", "index.html") and "HTML_DASHBOARD" in globals() and HTML_DASHBOARD:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(HTML_DASHBOARD.encode("utf-8"))
+                return
+            self.send_error(404, "File Not Found")
+            return
+
+        ext = os.path.splitext(resolved)[1].lower()
+        content_type = MIME_TYPES.get(ext, "application/octet-stream")
+
+        try:
+            with open(resolved, "rb") as f:
+                content = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(content)))
+            self.send_header("Cache-Control", "no-cache, must-revalidate")
+            self.end_headers()
+            self.wfile.write(content)
+        except Exception as exc:
+            self.send_error(500, f"Internal Server Error: {exc}")
+
     def do_GET(self):
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
         if path == "/" or path == "/index.html":
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(HTML_DASHBOARD.encode("utf-8"))
+            self.serve_static("index.html")
         elif path == "/api/status":
             state = engine.load_state()
             telem = engine.get_telemetry()
@@ -2098,7 +2152,7 @@ class BMSHandler(BaseHTTPRequestHandler):
             except Exception as exc:
                 self.send_error(500, f"Export failure: {exc}")
         else:
-            self.send_error(404)
+            self.serve_static(path)
 
     def do_POST(self):
         if self.path == "/api/import":
