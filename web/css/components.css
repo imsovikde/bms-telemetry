@@ -914,3 +914,141 @@
   border: 1px solid var(--danger);
   color: var(--danger);
 }
+
+/* CSV Export Button Aesthetic */
+.bms-btn-csv {
+  background: var(--secondary);
+  border-color: var(--border-strong);
+  color: var(--foreground);
+}
+
+.bms-btn-csv:hover {
+  background: var(--accent);
+  border-color: var(--chart-health);
+}
+
+/* Core Heatmap & Thermal Indicators */
+.core-chip {
+  background: var(--secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.core-chip:hover {
+  border-color: var(--border-strong);
+  background: var(--accent);
+}
+
+.core-label {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+.core-temp {
+  font-size: 13px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--safe);
+}
+
+.temp-optimal {
+  color: var(--safe);
+}
+
+.temp-warm {
+  color: var(--warn);
+}
+
+.temp-hot {
+  color: var(--danger);
+}
+
+/* TjMax Headroom Gauge Bar */
+.tjmax-bar-wrap {
+  width: 100%;
+  height: 6px;
+  background: var(--secondary);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  margin-top: 4px;
+}
+
+.tjmax-bar-fill {
+  height: 100%;
+  width: 50%;
+  background: linear-gradient(90deg, var(--safe), var(--warn));
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Process Attribution Stacked Bar & Table */
+.proc-stacked-bar {
+  display: flex;
+  width: 100%;
+  height: 10px;
+  background: var(--secondary);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.proc-bar-seg {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.proc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.proc-table th {
+  text-align: left;
+  padding: 8px 12px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.proc-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.proc-table tr:hover td {
+  background: var(--card-hover);
+}
+
+.proc-rank {
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.proc-name-badge {
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.proc-pid {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  margin-left: 6px;
+}

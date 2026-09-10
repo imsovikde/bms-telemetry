@@ -72,6 +72,16 @@
       </div>
 
       <!-- Export / Import Operations -->
+      <button type="button" class="bms-btn bms-btn-csv" id="btn-export-csv" title="Export high-frequency time-series CSV">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        EXPORT CSV
+      </button>
+
       <button type="button" class="bms-btn bms-btn-primary" id="btn-export" title="Export complete untruncated lifetime history JSON">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -268,6 +278,14 @@
           <path id="mini-spark-soc" stroke="var(--chart-soc)" fill="none" stroke-width="1.5" d=""></path>
         </svg>
       </div>
+      <div class="sparkline-card">
+        <div class="sparkline-title">
+          <span class="series-dot series-dot-temp"></span> Hardware DTS Temp (&deg;C)
+        </div>
+        <svg viewBox="0 0 300 36" preserveAspectRatio="none" class="sparkline-svg" role="img" aria-label="Thermal Sparkline">
+          <path id="mini-spark-temp" stroke="var(--chart-temp)" fill="none" stroke-width="1.5" d=""></path>
+        </svg>
+      </div>
     </div>
 
     <!-- Minimap Preview Bar -->
@@ -367,6 +385,103 @@
         <span class="reg-tag-accent">SCIENTIFIC DEGRADATION</span>
       </div>
       <div id="vhealth-30" class="reg-val-30">--</div>
+    </div>
+  </section>
+
+  <!-- 5.5 Hardware Thermals & Digital Thermal Sensors (DTS) Matrix -->
+  <section class="card-thermals">
+    <div class="thermals-header">
+      <div class="thermals-title-wrap">
+        <span class="pulse-dot pulse-dot-safe" id="thermal-pulse-dot"></span>
+        <span class="ledger-title">HARDWARE THERMALS &amp; DIGITAL THERMAL SENSORS (DTS)</span>
+      </div>
+      <div class="thermals-badge-group">
+        <span class="badge-chip badge-idle badge-xs" id="thermal-driver-badge">INTEL RAPTOR LAKE DTS</span>
+        <span class="badge-chip badge-charging badge-xs" id="thermal-alert-badge">OPTIMAL</span>
+      </div>
+    </div>
+
+    <div class="thermals-summary-strip">
+      <div class="thermal-kpi-block">
+        <div class="kpi-label">
+          <span>CPU Package Temperature</span>
+          <span class="badge-chip badge-idle badge-xs">DTS SENSOR</span>
+        </div>
+        <div id="stat-cpu-package" class="kpi-num kpi-num-warn">--.- &deg;C</div>
+        <div class="kpi-sub" id="stat-thermal-source">Intel Core i5-13500H Subsystem</div>
+      </div>
+
+      <div class="thermal-kpi-block">
+        <div class="kpi-label">
+          <span>Distance to TjMax Headroom</span>
+          <span class="badge-chip badge-charging badge-xs" id="tjmax-tag">SAFETY MARGIN</span>
+        </div>
+        <div id="stat-tjmax-headroom" class="kpi-num kpi-num-safe">--.- &deg;C</div>
+        <div class="kpi-sub">Junction Limit 100.0 &deg;C</div>
+        <div class="tjmax-bar-wrap">
+          <div class="tjmax-bar-fill" id="tjmax-progress-bar"></div>
+        </div>
+      </div>
+
+      <div class="thermal-kpi-block">
+        <div class="kpi-label">
+          <span>Processor Performance Limit</span>
+          <span class="badge-chip badge-idle badge-xs">DUTY CYCLE</span>
+        </div>
+        <div id="stat-perf-limit" class="kpi-num kpi-num-info">--%</div>
+        <div class="kpi-sub" id="stat-throttle-desc">Unthrottled Clock Envelope</div>
+      </div>
+    </div>
+
+    <div class="core-heatmap-grid" id="core-heatmap-grid">
+      <div class="core-chip" id="chip-p1"><span class="core-label">P-Core #1</span><span class="core-temp" id="val-p1">--.- &deg;C</span></div>
+      <div class="core-chip" id="chip-p2"><span class="core-label">P-Core #2</span><span class="core-temp" id="val-p2">--.- &deg;C</span></div>
+      <div class="core-chip" id="chip-p3"><span class="core-label">P-Core #3</span><span class="core-temp" id="val-p3">--.- &deg;C</span></div>
+      <div class="core-chip" id="chip-p4"><span class="core-label">P-Core #4</span><span class="core-temp" id="val-p4">--.- &deg;C</span></div>
+      <div class="core-chip" id="chip-e1"><span class="core-label">E-Core #1</span><span class="core-temp" id="val-e1">--.- &deg;C</span></div>
+      <div class="core-chip" id="chip-e2"><span class="core-label">E-Core #2</span><span class="core-temp" id="val-e2">--.- &deg;C</span></div>
+      <div class="core-chip" id="chip-e3"><span class="core-label">E-Core #3</span><span class="core-temp" id="val-e3">--.- &deg;C</span></div>
+      <div class="core-chip" id="chip-e4"><span class="core-label">E-Core #4</span><span class="core-temp" id="val-e4">--.- &deg;C</span></div>
+      <div class="core-chip" id="chip-e5"><span class="core-label">E-Core #5</span><span class="core-temp" id="val-e5">--.- &deg;C</span></div>
+      <div class="core-chip" id="chip-e6"><span class="core-label">E-Core #6</span><span class="core-temp" id="val-e6">--.- &deg;C</span></div>
+      <div class="core-chip" id="chip-e7"><span class="core-label">E-Core #7</span><span class="core-temp" id="val-e7">--.- &deg;C</span></div>
+      <div class="core-chip" id="chip-e8"><span class="core-label">E-Core #8</span><span class="core-temp" id="val-e8">--.- &deg;C</span></div>
+    </div>
+  </section>
+
+  <!-- 5.6 Process-Level Power & Resource Attribution -->
+  <section class="card-processes">
+    <div class="processes-header">
+      <div class="thermals-title-wrap">
+        <span class="pulse-dot pulse-dot-safe"></span>
+        <span class="ledger-title">PROCESS-LEVEL POWER &amp; RESOURCE ATTRIBUTION</span>
+      </div>
+      <span class="badge-chip badge-idle badge-xs" id="dynamic-power-val">DYNAMIC COMPUTE ATTRIBUTED</span>
+    </div>
+
+    <div class="proc-stacked-bar-container">
+      <div class="proc-stacked-bar" id="proc-stacked-bar"></div>
+    </div>
+
+    <div class="proc-table-wrap">
+      <table class="proc-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Process Name</th>
+            <th>CPU Load</th>
+            <th>GPU Engine</th>
+            <th>Attributed Power</th>
+            <th>Dynamic Share</th>
+            <th>Accumulated Energy</th>
+          </tr>
+        </thead>
+        <tbody id="proc-tbody">
+          <tr>
+            <td colspan="7" class="ledger-empty">Awaiting process attribution sampling...</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </section>
 

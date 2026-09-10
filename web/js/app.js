@@ -52,6 +52,9 @@ class BmsApplication {
     });
 
     // 4. Bind Export and Import Actions
+    const exportCsvBtn = document.getElementById("btn-export-csv");
+    if (exportCsvBtn) exportCsvBtn.addEventListener("click", () => this.exportCsv());
+
     const exportBtn = document.getElementById("btn-export");
     if (exportBtn) exportBtn.addEventListener("click", () => this.exportArchive());
 
@@ -97,8 +100,10 @@ class BmsApplication {
         const data = JSON.parse(e.data);
         const telem = data.telemetry;
         const state = data.state;
+        const thermals = data.thermals;
+        const topProcs = data.top_processes;
         store.setTelemetryAndState(telem, state);
-        this.updateUI(telem, state, data.hardware_identity);
+        this.updateUI(telem, state, data.hardware_identity, thermals, topProcs);
       } catch (err) {
         console.error("SSE parse error:", err);
       }
@@ -112,7 +117,7 @@ class BmsApplication {
     };
   }
 
-  updateUI(telem, state, hwId) {
+  updateUI(telem, state, hwId, thermals, topProcs) {
     const chgRate = telem.charge_rate_mw || 0;
     const disRate = telem.discharge_rate_mw || 0;
     const remCap = telem.remaining_capacity_mwh || 69993;
@@ -351,6 +356,111 @@ class BmsApplication {
         tbody.removeChild(tbody.lastChild);
       }
     }
+
+    // 9. Hardware Thermals and DTS Heatmap Update
+    if (thermals) {
+      const pkgTemp = thermals.cpu_package_temp_c || 48.0;
+      const headroom = thermals.distance_to_tjmax_c || 52.0;
+      const perfLimit = thermals.performance_limit_pct || 100.0;
+      const tjmax = thermals.tjmax_c || 100.0;
+
+      const pkgEl = document.getElementById("stat-cpu-package");
+      if (pkgEl) {
+        pkgEl.textContent = `${pkgTemp.toFixed(1)} \u00B0C`;
+        pkgEl.className = `kpi-num ${pkgTemp >= 85 ? "kpi-num-warn" : "kpi-num-safe"}`;
+      }
+
+      const headEl = document.getElementById("stat-tjmax-headroom");
+      if (headEl) {
+        headEl.textContent = `${headroom.toFixed(1)} \u00B0C`;
+        headEl.className = `kpi-num ${headroom < 15 ? "kpi-num-warn" : "kpi-num-safe"}`;
+      }
+
+      const barEl = document.getElementById("tjmax-progress-bar");
+      if (barEl) {
+        const pct = Math.min(100, Math.max(0, (headroom / tjmax) * 100));
+        barEl.style.width = `${pct.toFixed(1)}%`;
+      }
+
+      const limitEl = document.getElementById("stat-perf-limit");
+      if (limitEl) limitEl.textContent = `${perfLimit.toFixed(0)}%`;
+
+      const driverEl = document.getElementById("thermal-driver-badge");
+      if (driverEl) driverEl.textContent = thermals.sensor_source || "INTEL RAPTOR LAKE DTS";
+
+      const alertEl = document.getElementById("thermal-alert-badge");
+      if (alertEl) {
+        alertEl.textContent = thermals.alert_level || "OPTIMAL";
+        alertEl.className = `badge-chip ${thermals.alert_level === "OPTIMAL" ? "badge-charging" : "badge-discharging"} badge-xs`;
+      }
+
+      if (thermals.p_cores) {
+        for (let i = 1; i <= 4; i++) {
+          const tVal = thermals.p_cores[`P-Core #${i}`];
+          const el = document.getElementById(`val-p${i}`);
+          if (el && tVal !== undefined) {
+            el.textContent = `${tVal.toFixed(1)} \u00B0C`;
+            el.className = `core-temp ${tVal >= 85 ? "temp-hot" : (tVal >= 70 ? "temp-warm" : "temp-optimal")}`;
+          }
+        }
+      }
+
+      if (thermals.e_cores) {
+        for (let i = 1; i <= 8; i++) {
+          const tVal = thermals.e_cores[`E-Core #${i}`];
+          const el = document.getElementById(`val-e${i}`);
+          if (el && tVal !== undefined) {
+            el.textContent = `${tVal.toFixed(1)} \u00B0C`;
+            el.className = `core-temp ${tVal >= 85 ? "temp-hot" : (tVal >= 70 ? "temp-warm" : "temp-optimal")}`;
+          }
+        }
+      }
+    }
+
+    // 10. Process Power & Resource Attribution Update
+    if (topProcs && Array.isArray(topProcs) && topProcs.length > 0) {
+      const totalPowerW = topProcs.reduce((acc, p) => acc + (p.power_watts || 0), 0);
+      const dynBadge = document.getElementById("dynamic-power-val");
+      if (dynBadge) {
+        dynBadge.textContent = `${totalPowerW.toFixed(2)} W DYNAMIC COMPUTE ATTRIBUTED`;
+      }
+
+      const procTbody = document.getElementById("proc-tbody");
+      if (procTbody) {
+        procTbody.innerHTML = topProcs.map((p, idx) => `
+          <tr>
+            <td class="proc-rank">#${idx + 1}</td>
+            <td><span class="proc-name-badge">${p.name}</span><span class="proc-pid">PID ${p.pid}</span></td>
+            <td>${p.cpu_pct ? p.cpu_pct.toFixed(1) : "0.0"}%</td>
+            <td>${p.gpu_pct ? p.gpu_pct.toFixed(1) : "0.0"}%</td>
+            <td>${p.power_watts ? p.power_watts.toFixed(3) : "0.000"} W</td>
+            <td>${p.power_share_pct ? p.power_share_pct.toFixed(1) : "0.0"}%</td>
+            <td>${p.accumulated_energy_mwh ? p.accumulated_energy_mwh.toFixed(3) : "0.000"} mWh</td>
+          </tr>
+        `).join("");
+      }
+
+      const stackedBar = document.getElementById("proc-stacked-bar");
+      if (stackedBar) {
+        const palette = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4", "#64748b"];
+        stackedBar.innerHTML = topProcs.slice(0, 7).map((p, i) => `
+          <div class="proc-bar-seg" style="width: ${Math.max(1, p.power_share_pct || 0)}%; background-color: ${palette[i % palette.length]}" title="${p.name}: ${(p.power_share_pct || 0).toFixed(1)}% (${(p.power_watts || 0).toFixed(2)}W)"></div>
+        `).join("");
+      }
+    }
+  }
+
+  exportCsv() {
+    showToast("Preparing time-series CSV export...");
+    const a = document.createElement("a");
+    a.href = "/api/export/csv";
+    a.download = `bms_telemetry_history_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => {
+      showToast("Time-series CSV exported successfully!");
+    }, 800);
   }
 
   exportArchive() {

@@ -430,7 +430,8 @@ export class BmsVectorChart {
     const rails = [
       { id: "mini-spark-power", key: "power_mw", min: -35000, max: 40000 },
       { id: "mini-spark-voltage", key: "voltage_mv", min: 9000, max: 13500 },
-      { id: "mini-spark-soc", key: "soc_pct", min: 0, max: 100 }
+      { id: "mini-spark-soc", key: "soc_pct", min: 0, max: 100 },
+      { id: "mini-spark-temp", key: "temperature_c", min: 25, max: 105 }
     ];
 
     rails.forEach((rail) => {
