@@ -53,19 +53,19 @@ Version 4.0.0 completely eradicated this issue with a three-layer architectural 
 ```bash
 git clone https://github.com/imsovikde/bms-telemetry.git
 cd bms-telemetry
-chmod +x scripts/install.sh
-sudo ./scripts/install.sh
+chmod +x install.sh
+./install.sh
 ```
 
-### Windows (Elevated Administrator PowerShell)
+### Windows (PowerShell)
 ```powershell
 git clone https://github.com/imsovikde/bms-telemetry.git
 cd bms-telemetry
 Set-ExecutionPolicy -Scope Process Bypass
-.\scripts\install.ps1
+.\install.ps1
 ```
 
-Once installed, **`bms` is immediately available from any working directory (`C:\`, `/root`, `$HOME`, Desktop)**.
+Once installed, **`bms` is immediately available from any working directory (`C:\`, `/root`, `$HOME`, Desktop)** and the real-time web dashboard auto-starts on boot at `http://127.0.0.1:8989`.
 
 ---
 
@@ -87,6 +87,7 @@ Once installed, **`bms` is immediately available from any working directory (`C:
 | **Cycle Tracking** | Compensatory Coulomb integration + cold-boot differential S5 offline charge recovery. |
 | **Virtual Health (SoH%)** | Multi-factor degradation equation: SEI layer power-law decay ($N^{0.82}$), Arrhenius thermal kinetics ($E_a/R=3788\text{ K}$), and float overpotential stress. |
 | **Zero-Data-Loss Persistence**| Cryptographically sealed with HMAC-SHA256 keyed to immutable silicon identifiers (Motherboard UUID, Baseboard Serial, Battery Serial). Mirrored across 7 independent tiers including secondary physical NVMe partitions (`D:\`, `S:\`). Survives complete OS/drive `C:\` erasure. |
+| **Untruncated Lifetime Archive** | Complete historical ledger without truncation or pruning (`bms export` / `bms import` and Web UI buttons), ensuring 100% of charging events and S5 offline charge logs remain permanently intact, portable, and restorable across all 7 hardware tiers. |
 | **Resource Overhead** | Ultra-lightweight background daemon (`<0.01%` CPU utilization, `~14 MB` RAM footprint, 60-second tickless interval). |
 | **Automated Verification** | 21-test arithmetic suite (`tests/test_arithmetic.py`) and 100-cycle stress harness (`bms test-100`) executing in `<0.2` seconds. |
 
@@ -162,7 +163,9 @@ Once installed, **`bms` is immediately available from any working directory (`C:
 | :--- | :--- |
 | `bms` / `bms status` | Displays formatted 30-decimal battery telemetry, cycles, virtual health, and mirror health. |
 | `bms live` / `bms tui` | **Real-Time Interactive TUI (4 Hz)**: Live ticking 30-decimal cycle counter, instantaneous wattage oscilloscope, and zero-flicker double-buffered ANSI dashboard. |
-| `bms ui` / `bms web` | **Generative Web UI**: Launches local real-time glassmorphism browser dashboard with SVG gauges and live telemetry stream. |
+| `bms ui` / `bms web` | **Generative Web UI**: Launches local real-time glassmorphism browser dashboard with SVG circular dials, live telemetry stream, and **Export/Import Lifetime JSON** buttons. |
+| `bms export [file]` | **Lifetime Archive Export**: Exports complete untruncated lifetime history, all S5 offline charge logs, and hardware metadata to a signed JSON archive. |
+| `bms import <file>` | **Lifetime Archive Import**: Restores and synchronizes complete lifetime telemetry across all 7 hardware storage mirrors with fresh HMAC sealing. |
 | `bms full` | Outputs machine-readable raw JSON telemetry envelope and crypto registers. |
 | `bms test-100` | Executes the automated 100-cycle deep verification, wipe simulation, and stress suite. |
 | `bms sync-hw` | Forces cryptographic synchronization across all 7 hardware storage tiers. |
@@ -216,13 +219,17 @@ bms-telemetry/
 │   ├── CODEOWNERS                  # Ownership definition
 │   ├── PULL_REQUEST_TEMPLATE.md    # PR checklist and invariant verification
 │   └── dependabot.yml              # Weekly automated dependency audits
-├── scripts/
-│   ├── install.ps1                 # Windows Service (BMSTelemetry) installer
-│   └── install.sh                  # Linux systemd & macOS LaunchDaemon installer
+├── install.ps1                     # 1-Click Windows installer & reboot autostart setup
+├── install.sh                      # 1-Command Linux & macOS systemd autostart installer
+├── bms                             # Universal Linux/macOS executable CLI launcher
+├── bms.cmd                         # Windows CMD/PowerShell root CLI launcher
 ├── tests/
-│   └── test_arithmetic.py          # 21-test arbitrary-precision & offline delta suite
-├── bms_engine.py                   # Core 30-decimal ACPI telemetry & cycle engine
-├── bms_service.py                  # Windows Service wrapper (win32serviceutil)
+│   ├── test_arithmetic.py          # 21-test arbitrary-precision & offline delta suite
+│   └── test_antimock.py            # Hardware driver ACPI interface verification suite
+├── bms_engine.py                   # Core 30-decimal ACPI engine, TUI & archive manager
+├── bms_ui.py                       # Real-time Glassmorphism Web UI & 4 Hz SSE stream server
+├── bms_service.py                  # Windows Service wrapper with embedded HTTP daemon
+├── bms_core.cpp                    # Native C++20 engine with 128-bit Fixed30 arithmetic
 ├── verify_100.py                   # Standalone 100-cycle test harness
 ├── ARCHITECTURE.md                 # ACPI DSDT forensics, physics models, persistence tiering
 ├── DEVICE_ARCHITECTURE.md          # Complete hardware architecture & execution capabilities

@@ -158,6 +158,13 @@ State is protected by an HMAC-SHA256 signature keyed to immutable silicon hardwa
 
 On boot or read, the highest monotonic sequence number with a valid HMAC signature wins canonical state election.
 
+### 4.5 Untruncated Lifetime Historical Data & Portable Archive
+
+The integrity of historical telemetry is governed by the **Untruncated Lifetime Persistence Invariant**:
+1. **Append-Only History Ledger**: Historical battery events (discharge sessions, high-current charging transitions, and S5 boot recovery records) MUST NOT be sliced or limited by a rolling window. Slicing limits (such as legacy `events[-50:]`) are strictly prohibited.
+2. **Cryptographically Sealed JSON Archive**: The system provides full export and import capabilities (`bms export`, `bms import`, `GET /api/export`, `POST /api/import`). The archive captures 100% of telemetry registers (formatted to 30 decimal places), offline charging audit summaries, complete event lists, and cryptographic integrity hashes.
+3. **Multi-Mirror Restoration**: Importing an archive validates monotonic sequence counters and re-signs the entire state across all 7 hardware persistence tiers (`C:\ProgramData\BMS`, `~/.bms`, `D:\`, `S:\`, `E:\`, `/var/lib/bms`).
+
 ---
 
 ## 5. Requirements & Acceptance Criteria
@@ -172,6 +179,8 @@ On boot or read, the highest monotonic sequence number with a valid HMAC signatu
 - **FR-6**: The system MUST provide global CLI access via the `bms` command from any terminal working directory.
 - **FR-7**: The system daemon MUST run completely in the background without creating a console window, flickering the display, or stealing user focus.
 - **FR-8**: The biometric diagnostic module (`bms fix-bio`) MUST remain available to remediate Windows Hello fingerprint lockouts.
+- **FR-9**: The system MUST preserve all historical charging events, micro-deltas, and S5 boot recovery records indefinitely in an append-only ledger without truncation or pruning.
+- **FR-10**: The system MUST provide CLI commands (`bms export`, `bms import`) and interactive Generative Web UI buttons (`EXPORT LIFETIME JSON`, `IMPORT JSON`) to export and restore 100% of historical events and 30-decimal registers across hardware and OS boundaries.
 
 ### 5.2 Non-Functional Requirements (NFR)
 
@@ -180,6 +189,7 @@ On boot or read, the highest monotonic sequence number with a valid HMAC signatu
 - **NFR-3 (Execution Latency)**: Telemetry queries MUST resolve in under 100 milliseconds.
 - **NFR-4 (Deterministic Arithmetic)**: Repeating 1,000 micro-cycle additions MUST yield exact numerical equality down to the 30th decimal place.
 - **NFR-5 (Test Performance)**: The 100-cycle verification suite MUST execute in under 0.5 seconds on host hardware.
+- **NFR-6 (Thread-Safe Decimal Context)**: All concurrent server and worker threads MUST inherit a minimum 80-digit arbitrary-precision context (`decimal.DefaultContext.prec = 80`) ensuring zero `InvalidOperation` exceptions during high-frequency multithreaded quantization.
 
 ---
 

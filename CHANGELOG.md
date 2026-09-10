@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.2.0] - 2026-09-10
+
+### Added
+- **Untruncated Lifetime Historical Telemetry**:
+  - Removed 50-event rolling window slicing (`events[-50:]`) in `bms_engine.py` across both active Coulomb integration and S5 offline charge boot recovery.
+  - Lifetime event history now grows append-only in perpetuity without loss, maintaining every single micro-delta, timestamp, and energy transition.
+- **Complete Lifetime Telemetry Export & Import Subsystem**:
+  - Added `export_lifetime_data()` and `import_lifetime_data()` to `bms_engine.py` supporting full 30-decimal registers, S5 audit, and untruncated event ledger.
+  - Added CLI subcommands `bms export [file]` and `bms import <file>` with automatic schema validation and multi-tier HMAC re-sealing.
+  - Added REST API endpoints `GET /api/export` and `POST /api/import` to `bms_ui.py`.
+  - Added interactive glassmorphism **EXPORT LIFETIME JSON** and **IMPORT JSON** buttons to the Generative Web Dashboard with real-time animated toast notifications and local file reader upload.
+- **Automated 1-Command Cross-Platform Installers**:
+  - `install.ps1`: Automated Windows deployment copying files to `C:\ProgramData\BMS`, adding directory to system/user PATH, creating silent autostart VBS in `shell:startup`, launching the background daemon, and opening the browser dashboard.
+  - `install.sh`: Automated Linux/macOS deployment compiling `bms_core.cpp`, symlinking `/usr/local/bin/bms`, registering systemd service, and opening default browser.
+  - Added root executable launchers `bms` (shell script) and `bms.cmd` (Windows command wrapper) for zero-setup execution.
+
+### Fixed
+- **Thread-Local Decimal Precision Invalidation**:
+  - Resolved `decimal.InvalidOperation` in multi-threaded HTTP/SSE contexts by setting `decimal.DefaultContext.prec = 80`. New threads spawned by `ThreadingHTTPServer` inherit 80-digit precision instead of Python's default 28-digit limit.
+- **Concurrent Web Server Threading**:
+  - Replaced synchronous `HTTPServer` with `socketserver.ThreadingMixIn` / `ThreadingHTTPServer` in `bms_ui.py` and `bms_service.py`, preventing 4 Hz Server-Sent Events (SSE) from blocking concurrent `/api/status`, `/api/export`, and `/api/import` requests.
+
+---
+
 ## [4.1.0] - 2026-09-10
 
 ### Fixed
