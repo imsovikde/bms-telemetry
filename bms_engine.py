@@ -557,8 +557,157 @@ def import_lifetime_data(import_data, force: bool = False) -> dict:
     }
 
 
+def _query_battery_ioctl_windows() -> dict | None:
+    """Direct Windows Kernel IOCTL query bypassing WMI via setupapi.dll and kernel32.dll."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class GUID(ctypes.Structure):
+            _fields_ = [('Data1', wintypes.DWORD), ('Data2', wintypes.WORD), ('Data3', wintypes.WORD), ('Data4', ctypes.c_byte * 8)]
+
+        GUID_DEVCLASS_BATTERY = GUID(0x72631e54, 0x78a4, 0x11d0, (ctypes.c_byte * 8)(0xbc, 0xf7, 0x00, 0xaa, 0x00, 0xb7, 0xb3, 0x2a))
+
+        class SP_DEVICE_INTERFACE_DATA(ctypes.Structure):
+            _fields_ = [('cbSize', wintypes.DWORD), ('InterfaceClassGuid', GUID), ('Flags', wintypes.DWORD), ('Reserved', ctypes.c_void_p)]
+
+        class BATTERY_QUERY_INFORMATION(ctypes.Structure):
+            _fields_ = [('BatteryTag', wintypes.ULONG), ('InformationLevel', wintypes.ULONG), ('AtRate', wintypes.LONG)]
+
+        class BATTERY_INFORMATION(ctypes.Structure):
+            _fields_ = [
+                ('Capabilities', wintypes.ULONG),
+                ('Technology', ctypes.c_ubyte),
+                ('Reserved', ctypes.c_ubyte * 3),
+                ('Chemistry', ctypes.c_char * 4),
+                ('DesignedCapacity', wintypes.ULONG),
+                ('FullChargedCapacity', wintypes.ULONG),
+                ('DefaultAlert1', wintypes.ULONG),
+                ('DefaultAlert2', wintypes.ULONG),
+                ('CriticalBias', wintypes.ULONG),
+                ('CycleCount', wintypes.ULONG)
+            ]
+
+        class BATTERY_WAIT_STATUS(ctypes.Structure):
+            _fields_ = [
+                ('BatteryTag', wintypes.ULONG),
+                ('Timeout', wintypes.ULONG),
+                ('PowerState', wintypes.ULONG),
+                ('LowCapacity', wintypes.ULONG),
+                ('HighCapacity', wintypes.ULONG)
+            ]
+
+        class BATTERY_STATUS(ctypes.Structure):
+            _fields_ = [
+                ('PowerState', wintypes.ULONG),
+                ('Capacity', wintypes.ULONG),
+                ('Voltage', wintypes.ULONG),
+                ('Rate', wintypes.LONG)
+            ]
+
+        setupapi = ctypes.windll.setupapi
+        kernel32 = ctypes.windll.kernel32
+
+        setupapi.SetupDiGetClassDevsW.restype = ctypes.c_void_p
+        setupapi.SetupDiGetClassDevsW.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p, wintypes.HWND, wintypes.DWORD]
+        setupapi.SetupDiEnumDeviceInterfaces.restype = wintypes.BOOL
+        setupapi.SetupDiEnumDeviceInterfaces.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p]
+        setupapi.SetupDiGetDeviceInterfaceDetailW.restype = wintypes.BOOL
+        setupapi.SetupDiGetDeviceInterfaceDetailW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p]
+        setupapi.SetupDiDestroyDeviceInfoList.restype = wintypes.BOOL
+        setupapi.SetupDiDestroyDeviceInfoList.argtypes = [ctypes.c_void_p]
+        kernel32.CreateFileW.restype = ctypes.c_void_p
+        kernel32.CreateFileW.argtypes = [ctypes.c_wchar_p, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p]
+        kernel32.DeviceIoControl.restype = wintypes.BOOL
+        kernel32.DeviceIoControl.argtypes = [ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+
+        hdev = setupapi.SetupDiGetClassDevsW(ctypes.byref(GUID_DEVCLASS_BATTERY), None, None, 0x12)
+        if not hdev or hdev == -1:
+            return None
+        try:
+            did = SP_DEVICE_INTERFACE_DATA()
+            did.cbSize = ctypes.sizeof(SP_DEVICE_INTERFACE_DATA)
+            if setupapi.SetupDiEnumDeviceInterfaces(hdev, None, ctypes.byref(GUID_DEVCLASS_BATTERY), 0, ctypes.byref(did)):
+                req_size = wintypes.DWORD()
+                setupapi.SetupDiGetDeviceInterfaceDetailW(hdev, ctypes.byref(did), None, 0, ctypes.byref(req_size), None)
+                buf = ctypes.create_string_buffer(req_size.value)
+                ctypes.memmove(buf, ctypes.byref(wintypes.DWORD(8)), 4)
+                if setupapi.SetupDiGetDeviceInterfaceDetailW(hdev, ctypes.byref(did), buf, req_size.value, None, None):
+                    dev_path = ctypes.wstring_at(ctypes.addressof(buf) + 4)
+                    hbat = kernel32.CreateFileW(dev_path, 0xC0000000, 3, None, 3, 0x80, None)
+                    if hbat and hbat != -1:
+                        try:
+                            dw_wait = wintypes.ULONG(0)
+                            b_tag = wintypes.ULONG(0)
+                            ret_bytes = wintypes.DWORD(0)
+                            if kernel32.DeviceIoControl(hbat, 0x294040, ctypes.byref(dw_wait), 4, ctypes.byref(b_tag), 4, ctypes.byref(ret_bytes), None):
+                                bqi = BATTERY_QUERY_INFORMATION(b_tag.value, 0, 0)
+                                bi = BATTERY_INFORMATION()
+                                kernel32.DeviceIoControl(hbat, 0x294044, ctypes.byref(bqi), ctypes.sizeof(bqi), ctypes.byref(bi), ctypes.sizeof(bi), ctypes.byref(ret_bytes), None)
+                                bws = BATTERY_WAIT_STATUS(b_tag.value, 0, 0, 0, 0)
+                                bs = BATTERY_STATUS()
+                                if kernel32.DeviceIoControl(hbat, 0x29404c, ctypes.byref(bws), ctypes.sizeof(bws), ctypes.byref(bs), ctypes.sizeof(bs), ctypes.byref(ret_bytes), None):
+                                    pstate = bs.PowerState
+                                    online = bool(pstate & 1)
+                                    discharging = bool(pstate & 2)
+                                    charging = bool(pstate & 4)
+                                    critical = bool(pstate & 8)
+                                    rem_cap = float(bs.Capacity)
+                                    full_cap = float(bi.FullChargedCapacity) if bi.FullChargedCapacity > 0 else rem_cap
+                                    des_cap = float(bi.DesignedCapacity) if bi.DesignedCapacity > 0 else full_cap
+                                    volt_mv = float(bs.Voltage)
+                                    rate_mw = float(abs(bs.Rate)) if bs.Rate != -2147483648 else 0.0
+                                    chg_rate = rate_mw if charging else 0.0
+                                    dis_rate = rate_mw if discharging else 0.0
+                                    is_phys = charging and online and (rem_cap < full_cap) and (chg_rate > 0)
+                                    wear_pct = max(0.0, round(((des_cap - full_cap) / des_cap) * 100.0, 2)) if des_cap > 0 else 0.0
+                                    safe = 8000 <= volt_mv <= 14000 and rem_cap <= (full_cap * 1.05) and not critical
+                                    return {
+                                        "active": True,
+                                        "charging": charging,
+                                        "discharging": discharging,
+                                        "power_online": online,
+                                        "critical": critical,
+                                        "remaining_capacity_mwh": rem_cap,
+                                        "full_charge_capacity_mwh": full_cap,
+                                        "design_capacity_mwh": des_cap,
+                                        "wear_percentage": wear_pct,
+                                        "voltage_mv": volt_mv,
+                                        "charge_rate_mw": chg_rate,
+                                        "discharge_rate_mw": dis_rate,
+                                        "hardware_status_flags": {
+                                            "charging": charging,
+                                            "discharging": discharging,
+                                            "power_online": online,
+                                            "critical": critical,
+                                            "raw_power_state": pstate
+                                        },
+                                        "safe_operating_margin": safe,
+                                        "device_path": dev_path,
+                                        "tag": b_tag.value,
+                                        "chemistry": bi.Chemistry.decode(errors="ignore").strip("\x00"),
+                                        "is_physically_charging": is_phys,
+                                        "hardware_link": "KERNEL_DIRECT_IOCTL",
+                                        "source": "Windows Kernel ACPI Battery IOCTL"
+                                    }
+                        finally:
+                            kernel32.CloseHandle(hbat)
+        finally:
+            setupapi.SetupDiDestroyDeviceInfoList(hdev)
+    except Exception:
+        pass
+    return None
+
+
 def get_windows_battery_telemetry() -> dict:
-    """Queries low-level WMI ACPI Battery Subsystem on Windows without console flashing or focus theft."""
+    """Queries low-level ACPI Battery Subsystem on Windows via Kernel IOCTL, in-process COM, or windowless fallback."""
+    # ── Tier 0: Direct Windows Kernel ACPI Battery IOCTL (< 0.1ms, zero WMI, hardware-direct) ──
+    ioctl_res = _query_battery_ioctl_windows()
+    if ioctl_res is not None:
+        return ioctl_res
+
     # ── Tier 1: Pure In-Process COM WMI Interop (< 1ms, 0 child processes, 0 window allocation) ──
     try:
         import win32com.client
